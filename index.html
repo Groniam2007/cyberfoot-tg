@@ -234,8 +234,52 @@ function migrateSaves(){
     localStorage.setItem('cf_slots_migrated','1');
   }catch(e){console.warn('Миграция сохранения не удалась',e)}
 }
-const readSlot=n=>{try{const s=localStorage.getItem(slotKey(n));return s?JSON.parse(s):null}catch(e){return null}};
-const save=()=>{if(!ACTIVE_SLOT||!G)return;try{localStorage.setItem(slotKey(ACTIVE_SLOT),JSON.stringify(G))}catch(e){console.warn('Не удалось сохранить карьеру',e)}};
+// LZW over UTF-8: smaller localStorage records for two full world simulations.
+function packSave(json){
+  const bytes=new TextEncoder().encode(json),dict=new Map();let next=256,w='',codes=[];
+  for(const byte of bytes){const c=String.fromCharCode(byte),wc=w+c;
+    if(dict.has(wc)){w=wc;continue}
+    if(w)codes.push(w.length===1?w.charCodeAt(0):dict.get(w));
+    if(w&&next<65535)dict.set(wc,next++);
+    w=c;
+  }
+  if(w)codes.push(w.length===1?w.charCodeAt(0):dict.get(w));
+  let out='';for(const c of codes)out+=String.fromCharCode(c>>8,c&255);
+  return 'LZW1:'+btoa(out);
+}
+function unpackSave(data){
+  if(!data.startsWith('LZW1:'))return data;
+  const bin=atob(data.slice(5)),codes=[];
+  if(bin.length%2)throw Error('Повреждённое сохранение');
+  for(let i=0;i<bin.length;i+=2)codes.push(bin.charCodeAt(i)*256+bin.charCodeAt(i+1));
+  if(!codes.length)return '';
+  let dict=[],next=256,prev=String.fromCharCode(codes[0]),parts=[prev];
+  for(let i=1;i<codes.length;i++){
+    const code=codes[i],entry=code<256?String.fromCharCode(code):dict[code]||(code===next?prev+prev[0]:null);
+    if(entry===null||entry===undefined)throw Error('Повреждённое сохранение');
+    parts.push(entry);
+    if(next<65535)dict[next++]=prev+entry[0];
+    prev=entry;
+  }
+  const str=parts.join(''),bytes=new Uint8Array(str.length);
+  for(let i=0;i<str.length;i++)bytes[i]=str.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+const readSlot=n=>{try{const s=localStorage.getItem(slotKey(n));return s?JSON.parse(unpackSave(s)):null}catch(e){console.warn('Не удалось прочитать слот '+n,e);return null}};
+let saveWarning=false;
+const save=()=>{
+  if(!ACTIVE_SLOT||!G)return false;
+  try{
+    const key=slotKey(ACTIVE_SLOT),data=packSave(JSON.stringify(G));
+    localStorage.setItem(key,data);
+    if(localStorage.getItem(key)!==data)throw Error('Проверка записи не пройдена');
+    saveWarning=false;return true;
+  }catch(e){
+    console.error('Не удалось сохранить карьеру',e);
+    if(!saveWarning){saveWarning=true;alert('Не удалось сохранить карьеру №'+ACTIVE_SLOT+'. Память Telegram может быть заполнена. Не закрывай игру до решения проблемы.');}
+    return false;
+  }
+};
 const load=()=>ACTIVE_SLOT?readSlot(ACTIVE_SLOT):null;
 function selectSlot(n){
   if(n!==1&&n!==2)return;
