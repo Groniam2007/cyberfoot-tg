@@ -264,6 +264,8 @@ const save=()=>{
     const key=slotKey(ACTIVE_SLOT),data=packSave(JSON.stringify(G));
     localStorage.setItem(key,data);
     if(localStorage.getItem(key)!==data)throw Error('Проверка записи не пройдена');
+    const restored=readSlot(ACTIVE_SLOT);
+    if(!validSave(restored))throw Error('Сохранение записано, но не читается или повреждено');
     saveWarning=false;return true;
   }catch(e){
     console.error('Не удалось сохранить карьеру',e);
@@ -279,7 +281,11 @@ function selectSlot(n){
   if(validSave(saved)){G=saved;render()}else start();
 }
 function slotMenu(){
-  if(G)save();
+  if(G&&!save())return;
+  if(G&&!validSave(readSlot(ACTIVE_SLOT))){
+    alert('Сохранение №'+ACTIVE_SLOT+' не удалось восстановить. Карьера пока открыта — не закрывай приложение.');
+    return;
+  }
   G=null;ACTIVE_SLOT=0;TAB=0;
   showSlots();
 }
@@ -293,8 +299,8 @@ function deleteSlot(n){
 function showSlots(){
   migrateSaves();
   const cards=[1,2].map(n=>{
-    const g=readSlot(n),ok=validSave(g),team=ok?(g.t.find(t=>t.user)||{}).name:'';
-    const summary=ok?'<div class="mu">'+team+' · Сезон '+g.season+'</div>':'<div class="mu">Пустой слот · Новая карьера</div>';
+    const raw=localStorage.getItem(slotKey(n)),g=readSlot(n),ok=validSave(g),team=ok?(g.t.find(t=>t.user)||{}).name:'';
+    const summary=ok?'<div class="mu">'+team+' · Сезон '+g.season+'</div>':raw?'<div class="mu">⚠️ Данные слота есть, но не читаются. Не удаляй сохранение!</div>':'<div class="mu">Пустой слот · Новая карьера</div>';
     return '<div class="c" style="margin:12px 0;padding:18px"><div class="eyebrow">Сохранение №'+n+'</div><h2 style="margin:10px 0">'+(ok?team:'Новая карьера')+'</h2>'+summary+
       '<button class="cta" style="width:100%;margin-top:14px" onclick="selectSlot('+n+')">'+(ok?'Продолжить':'Создать карьеру')+'</button>'+
       (ok?'<button class="s" style="margin-top:9px;width:100%" onclick="deleteSlot('+n+')">Удалить сохранение</button>':'')+'</div>';
