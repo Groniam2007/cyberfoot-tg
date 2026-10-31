@@ -511,7 +511,7 @@ function cfPitch(){return `<div class="cf-field"><svg viewBox="0 0 420 244" role
 <rect x="12" y="216" width="112" height="19" rx="4" fill="#091728" fill-opacity=".88"/>
 <circle cx="23" cy="225" r="3.5" fill="#f24e58"/>
 <text x="32" y="229" font-size="9" font-weight="800" fill="#fff">CYBERFOOT LIVE</text>
-<text x="408" y="230" text-anchor="end" font-size="9" font-weight="800" fill="#ffffff" fill-opacity=".8">TV 3.1</text>
+<text x="408" y="230" text-anchor="end" font-size="9" font-weight="800" fill="#ffffff" fill-opacity=".8">TV 3.2</text>
 </g><text id="cf-flash" class="cf-flash" x="210" y="53" text-anchor="middle"></text></svg>
 </div>
 <div class="cf-caption" id="cf-caption" aria-live="polite">🎙️ Прямая трансляция начинается</div><div class="cf-ctrl"><button class="s" data-cfspeed="1" onclick="cfSpeed(1)">▶ x1</button><button class="s" data-cfspeed="2" onclick="cfSpeed(2)">⏩ x2</button><button class="s" data-cfspeed="4" onclick="cfSpeed(4)">⚡ x4</button><button class="s" onclick="cfSkipMoment()">⏭ Момент</button></div>`}
@@ -519,7 +519,7 @@ function cfPaint(min,events,home,away){
  const roots=document.querySelectorAll('#cf-pieces');if(!roots.length)return;
  const set=(id,value)=>document.querySelectorAll('#'+id).forEach(el=>el.textContent=value);
  const past=events.filter(e=>e.m<=min),hg=past.filter(e=>e.t==='h').length;
- const abbr=n=>String(n||'').replace(/[^\\p{L}\\p{N} ]/gu,'').trim().split(/\\s+/).map(x=>x.slice(0,3)).join(' ').slice(0,13).toUpperCase()||'КЛУБ';
+ const abbr=n=>String(n||'').trim().split(/\s+/).map(x=>x.slice(0,5)).join(' ').slice(0,13).toUpperCase()||'КЛУБ';
  set('cf-tv-home',abbr(home));set('cf-tv-away',abbr(away));
  set('cf-tv-score',hg+' : '+(past.length-hg));set('cf-tv-clock',String(Math.floor(min)).padStart(2,'0')+':00');
  const hit=events.find(e=>Math.abs(e.m-min)<=3),attack=hit?hit.t:(Math.floor(min/7)%2?'h':'a');
