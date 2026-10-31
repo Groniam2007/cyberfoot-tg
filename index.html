@@ -544,7 +544,7 @@ function cfPitch(){return `<div class="cf-field"><svg viewBox="0 0 420 244" role
 <rect x="12" y="216" width="112" height="19" rx="4" fill="#091728" fill-opacity=".88"/>
 <circle cx="23" cy="225" r="3.5" fill="#f24e58"/>
 <text x="32" y="229" font-size="9" font-weight="800" fill="#fff">CYBERFOOT LIVE</text>
-<text x="408" y="230" text-anchor="end" font-size="9" font-weight="800" fill="#ffffff" fill-opacity=".8">TV 3.9</text>
+<text x="408" y="230" text-anchor="end" font-size="9" font-weight="800" fill="#ffffff" fill-opacity=".8">TV 4.0</text>
 </g><text id="cf-flash" class="cf-flash" x="210" y="53" text-anchor="middle"></text></svg>
 </div>
 <div class="cf-caption" id="cf-caption" aria-live="polite">🎙️ Прямая трансляция начинается</div><div class="cf-ctrl"><button class="s" data-cfspeed="1" onclick="cfSpeed(1)">▶ x1</button><button class="s" data-cfspeed="2" onclick="cfSpeed(2)">⏩ x2</button><button class="s" data-cfspeed="4" onclick="cfSpeed(4)">⚡ x4</button><button class="s" onclick="cfSkipMoment()">⏭ Момент</button></div>`}
@@ -563,7 +563,7 @@ function cfStartMotion(){
    const nodes=root._cfNodes,targets=root._cfTargets,pos=root._cfPositions;
    if(root._cfGoalSequence){
     const elapsed=now-root._cfGoalSequence.at;
-    if(elapsed>=1550&&elapsed<3100){
+    if(elapsed>=1350&&elapsed<3400){
      // After the goal, players return to their halves for the restart.
      for(let p=0;p<22;p++){
       const home=p<11,idx=p%11,side=home?-1:1;
@@ -585,16 +585,22 @@ function cfStartMotion(){
      const seq=root._cfGoalSequence;
      if(seq){
       const elapsed=now-seq.at;
-      if(elapsed<850){
-       const t=Math.min(1,elapsed/850),ease=t*t*(3-2*t);
+      if(elapsed<760){
+       const t=Math.min(1,elapsed/760),ease=t*t*(3-2*t);
        // The ball crosses the actual goal line, inside the posts.
        target=[seq.from[0]+(seq.goalX-seq.from[0])*ease,seq.from[1]+(122-seq.from[1])*ease];
-      }else if(elapsed<1550){target=[seq.goalX,122]}
-      else if(elapsed<2200){
-       const t=Math.min(1,(elapsed-1550)/650),ease=t*t*(3-2*t);
+      }else if(elapsed<1350){target=[seq.goalX,122]}
+      else if(elapsed<2150){
+       const t=Math.min(1,(elapsed-1350)/800),ease=t*t*(3-2*t);
        target=[seq.goalX+(210-seq.goalX)*ease,122];
-      }else if(elapsed<3100){target=[210,122]}
-      else{root._cfGoalSequence=null;root._cfOwner=seq.kickOwner;root._cfPass=null;target=[210,122]}
+      }else if(elapsed<3400){target=[210,122]}
+      else{
+       root._cfGoalSequence=null;root._cfOwner=seq.kickOwner;root._cfPass=null;
+       // A real kickoff: the conceding side taps the ball from the centre to a teammate.
+       const receiver=seq.kickHome?8:19;
+       root._cfPass={from:[210,122],owner:receiver,at:now,duration:800};
+       target=[210,122];
+      }
       if(root._cfGoalSequence){
        pos[i][0]=target[0];pos[i][1]=target[1];
        nodes[i].setAttribute('cx',pos[i][0].toFixed(2));
@@ -610,7 +616,7 @@ function cfStartMotion(){
      }else if(pass){
       const receiver=pos[pass.owner]||targets[pass.owner];
       const end=[receiver[0]+(pass.owner<11?8:-8),receiver[1]+5];
-      const t=Math.min(1,(now-pass.at)/480),ease=t*t*(3-2*t);
+      const t=Math.min(1,(now-pass.at)/(pass.duration||480)),ease=t*t*(3-2*t);
       target=[pass.from[0]+(end[0]-pass.from[0])*ease,pass.from[1]+(end[1]-pass.from[1])*ease-15*Math.sin(Math.PI*t)];
       if(t>=1){root._cfPass=null;root._cfOwner=pass.owner;}
      }else target=foot;
@@ -660,15 +666,15 @@ function cfPaint(min,events,home,away){
    root.innerHTML=pieces.join('');root.dataset.cfReady='1';root._cfNodes=Array.from(root.querySelectorAll('circle'));
    root._cfPositions=positions.concat([positions[owner],positions[owner]]).map(p=>p.slice());
   }
-  root._cfTargets=positions.concat([positions[owner],positions[owner]]);
+  if(!root._cfGoalSequence)root._cfTargets=positions.concat([positions[owner],positions[owner]]);
   // Never restart a pass before the ball reaches its intended receiver.
   // The game clock can tick several times during one 480 ms pass.
   if(root._cfOwner===undefined){root._cfOwner=owner;}
   else if(!root._cfGoalSequence&&!root._cfPass&&!root._cfShot&&root._cfOwner!==owner){
    root._cfPass={from:root._cfPositions[23].slice(),owner,at:performance.now()};
   }
-  if(goal&&root._cfGoalMinute!==min){
-   root._cfGoalMinute=min;
+  if(goal&&!root._cfGoalSequence&&root._cfGoalEvent!==goal){
+   root._cfGoalEvent=goal;
    root._cfPass=null;
    root._cfOwner=owner;
    root._cfShot=null;
@@ -685,24 +691,63 @@ function cfPaint(min,events,home,away){
 // A knockout tie already has a penalty winner in the existing cup simulation.
 // This animation presents that decision without rerolling or altering the saved result.
 function cfPenaltyShow(rep,done){
+ // Penalty shootout is a presentation of the existing knockout winner, not a second simulation.
  const winner=rep.pn,home=rep.h,away=rep.a;
  const host=document.createElement('div');host.className='md';host.style.zIndex='95';
- host.innerHTML=`<div class="c" style="width:min(440px,100%);text-align:center;background:#142338;border:1px solid #ffc93c77"><div class="eyebrow">🏆 ПЛЕЙ-ОФФ · СЕРИЯ ПЕНАЛЬТИ</div><h2 style="margin:12px 0">${home} — ${away}</h2><div style="background:linear-gradient(90deg,#22663c 50%,#2c7748 50%);border:2px solid #b5d7b9;border-radius:12px;padding:20px 10px;margin:12px 0"><div style="font-size:42px">🥅 ⚽</div><div id="cf-pen-text" style="font-weight:700;color:white">Команды готовятся к ударам...</div></div><div id="cf-pen-score" style="font:700 32px var(--fn);color:var(--gold)">0 : 0</div><p class="mu" id="cf-pen-step">Серия до пяти ударов</p><button id="cf-pen-skip" class="cta">⏭ Пропустить серию</button></div>`;
+ host.innerHTML=`<div class="c" style="width:min(450px,96vw);text-align:center;background:#142338;border:1px solid #ffc93c77">
+ <div class="eyebrow">🏆 ПЛЕЙ-ОФФ · СЕРИЯ ПЕНАЛЬТИ</div><h2 style="margin:10px 0;font-size:18px">${home} — ${away}</h2>
+ <svg id="cf-pen-pitch" viewBox="0 0 360 175" style="display:block;width:100%;background:#236b42;border-radius:12px;border:2px solid #8cbd93" aria-label="Пенальти с одиннадцатиметровой отметки">
+ <defs><pattern id="cf-pen-grass" width="40" height="175" patternUnits="userSpaceOnUse"><rect width="40" height="175" fill="#246e43"/><rect width="20" height="175" fill="#2b794a"/></pattern></defs>
+ <rect width="360" height="175" fill="url(#cf-pen-grass)"/>
+ <g stroke="#ffffffa9" fill="none" stroke-width="1.6"><path d="M282 12V163H359M282 37H359M282 138H359"/><path d="M315 58H359M315 117H359"/><path d="M346 65V110H358V65Z" stroke-width="2.8"/><path d="M346 65H358V110H346" stroke-dasharray="3 4" stroke-width=".8"/></g>
+ <circle cx="245" cy="87" r="2.5" fill="#fff"/><text x="245" y="110" fill="#ffffffa8" font-size="9" text-anchor="middle">11 м</text>
+ <circle id="cf-pen-shooter" cx="208" cy="87" r="9" fill="#f3f5ff" stroke="#243657" stroke-width="2"/>
+ <circle id="cf-pen-keeper" cx="348" cy="87" r="10" fill="#ffc93c" stroke="#7e4f18" stroke-width="2"/>
+ <circle id="cf-pen-ball" cx="245" cy="87" r="5" fill="#fff" stroke="#111" stroke-width="1.5"/>
+ </svg>
+ <div id="cf-pen-text" style="font-weight:700;color:white;margin-top:10px">Игроки готовятся к серии...</div>
+ <div id="cf-pen-score" style="font:700 32px var(--fn);color:var(--gold)">0 : 0</div>
+ <p class="mu" id="cf-pen-step">Удары с 11 метров · анимация серии</p>
+ <button id="cf-pen-skip" class="cta">⏭ Пропустить серию</button></div>`;
  document.body.appendChild(host);
- let i=0,finished=false;
- const aWin=winner===home;
- const shots=aWin?[[1,0],[1,1],[2,1],[2,2],[3,2],[3,3],[4,3],[4,4],[5,4]]:[[0,1],[1,1],[1,2],[2,2],[2,3],[3,3],[3,4],[4,4],[4,5]];
- const finish=()=>{if(finished)return;finished=true;clearInterval(timer);host.remove();done()};
- host.querySelector('#cf-pen-skip').onclick=finish;
- const tick=()=>{
-  if(i>=shots.length){host.querySelector('#cf-pen-text').textContent='🏆 Победитель: '+winner;host.querySelector('#cf-pen-step').textContent='Серия завершена';host.querySelector('#cf-pen-skip').textContent='Продолжить';clearInterval(timer);return}
-  const [h,a]=shots[i],prev=i?shots[i-1]:[0,0];
-  host.querySelector('#cf-pen-score').textContent=h+' : '+a;
-  host.querySelector('#cf-pen-text').textContent=(h+a>prev[0]+prev[1]?'⚽ ГОЛ!':'🧤 СЕЙВ!');
-  host.querySelector('#cf-pen-step').textContent='Удар '+(i+1)+' из '+shots.length;
-  i++;
- };
- const timer=setInterval(tick,750);
+ const ball=host.querySelector('#cf-pen-ball'),keeper=host.querySelector('#cf-pen-keeper'),shooter=host.querySelector('#cf-pen-shooter');
+ const label=host.querySelector('#cf-pen-text'),score=host.querySelector('#cf-pen-score'),step=host.querySelector('#cf-pen-step'),btn=host.querySelector('#cf-pen-skip');
+ // A representative 5-4 sequence. The winner is taken exclusively from rep.pn.
+ const homeWins=winner===home;
+ const results=homeWins?[true,true,true,true,true,true,true,true,true,false]:[true,true,true,true,true,true,true,true,false,true];
+ let index=0,h=0,a=0,active=true,frameId=0,timeoutId=0,ended=false;
+ const cancel=()=>{cancelAnimationFrame(frameId);clearTimeout(timeoutId)};
+ const finish=()=>{if(ended)return;ended=true;active=false;cancel();host.remove();done()};
+ btn.onclick=()=>{if(index>=results.length){finish();return}finish()};
+ function animateShot(success,side,onEnd){
+  const begin=performance.now(),duration=760,goalY=success?(side==='h'?73:101):87;
+  shooter.setAttribute('fill',side==='h'?'#f3f5ff':'#ef5960');
+  const draw=now=>{
+   if(!active)return;
+   const t=Math.min(1,(now-begin)/duration),flight=Math.max(0,(t-.22)/.78),e=flight*flight*(3-2*flight);
+   const kick=Math.min(1,t/.22);
+   shooter.setAttribute('cx',(208+26*kick).toFixed(1));
+   ball.setAttribute('cx',(245+(success?107:88)*e).toFixed(1));
+   ball.setAttribute('cy',(87+(goalY-87)*e-8*Math.sin(Math.PI*e)).toFixed(1));
+   keeper.setAttribute('cy',(87+(success?(side==='h'?22:-22):0)*Math.min(1,t*2)).toFixed(1));
+   if(t<1)frameId=requestAnimationFrame(draw);else onEnd();
+  };
+  frameId=requestAnimationFrame(draw);
+ }
+ function next(){
+  if(!active)return;
+  if(index>=results.length){label.textContent='🏆 Победитель серии: '+winner;step.textContent='Итог серии: '+h+' : '+a+' · демонстрационная последовательность';btn.textContent='Продолжить';return}
+  const side=index%2===0?'h':'a',success=results[index],who=side==='h'?home:away;
+  ball.setAttribute('cx','245');ball.setAttribute('cy','87');keeper.setAttribute('cy','87');shooter.setAttribute('cx','208');
+  label.textContent='⚽ '+who+' — разбег и удар!';step.textContent='Удар '+(index+1)+' из '+results.length+' · 11-метровая отметка';
+  animateShot(success,side,()=>{
+   if(success){if(side==='h')h++;else a++}
+   score.textContent=h+' : '+a;
+   label.textContent=success?'⚽ ГОЛ! Мяч в воротах!':'❌ Пенальти не реализован!';
+   index++;timeoutId=setTimeout(next,650);
+  });
+ }
+ timeoutId=setTimeout(next,500);
 }
 
 </script></body></html>
