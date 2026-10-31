@@ -205,6 +205,27 @@ td:first-child{width:34px;text-align:center}
 .cf-caption{min-height:40px;padding:8px 3px;color:var(--gold);font-weight:600;font-size:13px}
 .cf-ctrl{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.cf-ctrl button{flex:1;font-size:12px;padding:8px 5px;min-height:37px}
 .cf-field .cf-flash{font:800 24px var(--fd);fill:#ffc93c;paint-order:stroke;stroke:#082818;stroke-width:4}
+
+/* Match Engine 3.0 — TV broadcast presentation */
+.cf-field{aspect-ratio:1.66!important;border:3px solid #273b52!important;border-radius:15px!important;background:#123522!important;box-shadow:0 14px 32px #0008,inset 0 0 20px #0008!important;margin:10px 0 7px!important}
+.cf-field::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,#06132180,transparent 24%,transparent 75%,#06132190)}
+.cf-field svg{position:relative;z-index:0}
+.cf-field .pitch{stroke:#e9fff5b0!important;stroke-width:1.3}
+.cf-player{filter:drop-shadow(1px 2px 1px #001a10aa);transition:cx .16s linear,cy .16s linear}
+.cf-ball{filter:drop-shadow(0 1px 3px #000);transition:cx .16s linear,cy .16s linear}
+.cf-tv-hud{position:absolute;z-index:3;top:9px;left:9px;right:9px;display:flex;justify-content:space-between;align-items:center;gap:5px;pointer-events:none}
+.cf-tv-score{display:flex;align-items:center;background:#071425e8;color:#fff;border:1px solid #ffffff29;border-radius:7px;overflow:hidden;box-shadow:0 3px 12px #0008;font:700 11px var(--fb)}
+.cf-tv-score span{padding:6px 7px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cf-tv-score strong{background:#ffc93c;color:#101c24;padding:6px 9px;font:800 14px var(--fn)}
+.cf-tv-clock{padding:5px 8px;border-radius:7px;background:#071425df;border:1px solid #ffffff29;color:#f5f7fa;font:700 13px var(--fn)}
+.cf-tv-live{position:absolute;z-index:3;bottom:9px;left:9px;color:#e5f3ee;background:#081c24bb;border:1px solid #ffffff2b;padding:4px 7px;border-radius:5px;font:700 10px var(--fb);letter-spacing:.12em;pointer-events:none}
+.cf-tv-live i{display:inline-block;background:#ff4b53;width:6px;height:6px;border-radius:50%;margin-right:5px}
+.cf-caption{min-height:38px;font-weight:600}
+.cf-field .cf-flash{font-size:24px!important;filter:drop-shadow(0 2px 5px #000)}
+.cf-ctrl{display:flex;flex-wrap:wrap;gap:5px}
+.cf-ctrl button{flex:1;min-width:65px;padding:7px 5px;font-size:12px}
+.cf-moment-field .cf-field{max-height:230px}
+@media(max-width:400px){.cf-tv-score span{max-width:78px;font-size:9px}.cf-tv-clock{font-size:11px}}
 </style></head><body><div id="app"></div>
 <script>
 const L={
@@ -467,9 +488,19 @@ showSlots();
 let CF_SPEED=1,CF_SKIP_MOMENT=false;
 function cfSpeed(n){CF_SPEED=n;document.querySelectorAll('[data-cfspeed]').forEach(b=>b.classList.toggle('s',+b.dataset.cfspeed!==n))}
 function cfSkipMoment(){CF_SKIP_MOMENT=true}
-function cfPitch(){return `<div class="cf-field"><svg viewBox="0 0 420 244" role="img" aria-label="Двухмерное футбольное поле"><g class="pitch"><rect x="8" y="8" width="404" height="228"/><path d="M210 8V236"/><circle cx="210" cy="122" r="36"/><path d="M8 62H72V182H8M412 62H348V182H412M8 90H34V154H8M412 90H386V154H412"/><circle cx="210" cy="122" r="2"/></g><g id="cf-pieces"></g><text id="cf-flash" class="cf-flash" x="210" y="42" text-anchor="middle"></text></svg></div><div class="cf-caption" id="cf-caption" aria-live="polite">Команды выходят на поле</div><div class="cf-ctrl"><button class="s" data-cfspeed="1" onclick="cfSpeed(1)">🐢 x1</button><button class="s" data-cfspeed="2" onclick="cfSpeed(2)">⚡ x2</button><button class="s" data-cfspeed="4" onclick="cfSpeed(4)">🚀 x4</button><button class="s" onclick="cfSkipMoment()">⏭ Момент</button></div>`}
+function cfPitch(){return `<div class="cf-field"><svg viewBox="0 0 420 244" role="img" aria-label="Телевизионная трансляция матча">
+<defs><pattern id="cf-grass" width="60" height="244" patternUnits="userSpaceOnUse"><rect width="60" height="244" fill="#247347"/><rect width="30" height="244" fill="#2b7e4e"/></pattern><radialGradient id="cf-light"><stop stop-color="#fff" stop-opacity=".14"/><stop offset="1" stop-color="#000" stop-opacity=".19"/></radialGradient></defs>
+<rect width="420" height="244" fill="#101c2b"/><rect x="4" y="4" width="412" height="236" rx="3" fill="url(#cf-grass)"/><rect x="4" y="4" width="412" height="236" fill="url(#cf-light)"/>
+<g class="pitch" fill="none"><rect x="8" y="8" width="404" height="228"/><path d="M210 8V236"/><circle cx="210" cy="122" r="36"/><path d="M8 62H72V182H8M412 62H348V182H412M8 90H34V154H8M412 90H386V154H412"/><path d="M8 106H2V138H8M412 106H418V138H412"/><circle cx="210" cy="122" r="2"/><circle cx="48" cy="122" r="2"/><circle cx="372" cy="122" r="2"/></g>
+<g id="cf-pieces"></g><text id="cf-flash" class="cf-flash" x="210" y="53" text-anchor="middle"></text></svg>
+<div class="cf-tv-hud"><div class="cf-tv-score"><span id="cf-tv-home">ДОМА</span><strong id="cf-tv-score">0 : 0</strong><span id="cf-tv-away">ГОСТИ</span></div><div class="cf-tv-clock" id="cf-tv-clock">00:00</div></div><div class="cf-tv-live"><i></i>CYBERFOOT LIVE · 2D</div></div>
+<div class="cf-caption" id="cf-caption" aria-live="polite">🎙️ Прямая трансляция начинается</div><div class="cf-ctrl"><button class="s" data-cfspeed="1" onclick="cfSpeed(1)">▶ x1</button><button class="s" data-cfspeed="2" onclick="cfSpeed(2)">⏩ x2</button><button class="s" data-cfspeed="4" onclick="cfSpeed(4)">⚡ x4</button><button class="s" onclick="cfSkipMoment()">⏭ Момент</button></div>`}
 function cfPaint(min,events,home,away){
  const roots=document.querySelectorAll('#cf-pieces');if(!roots.length)return;
+ const set=(id,value)=>document.querySelectorAll('#'+id).forEach(el=>el.textContent=value);
+ const past=events.filter(e=>e.m<=min),hg=past.filter(e=>e.t==='h').length;
+ set('cf-tv-home',home||'ДОМА');set('cf-tv-away',away||'ГОСТИ');
+ set('cf-tv-score',hg+' : '+(past.length-hg));set('cf-tv-clock',String(Math.floor(min)).padStart(2,'0')+':00');
  const hit=events.find(e=>Math.abs(e.m-min)<=3),attack=hit?hit.t:(Math.floor(min/7)%2?'h':'a');
  const phase=hit?Math.max(0,Math.min(1,(min-hit.m+3)/6)):(min%7)/7;
  const right=attack==='h';const direction=right?1:-1;
