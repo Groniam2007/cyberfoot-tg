@@ -514,7 +514,7 @@ function cfPitch(){return `<div class="cf-field"><svg viewBox="0 0 420 244" role
 <rect x="12" y="216" width="112" height="19" rx="4" fill="#091728" fill-opacity=".88"/>
 <circle cx="23" cy="225" r="3.5" fill="#f24e58"/>
 <text x="32" y="229" font-size="9" font-weight="800" fill="#fff">CYBERFOOT LIVE</text>
-<text x="408" y="230" text-anchor="end" font-size="9" font-weight="800" fill="#ffffff" fill-opacity=".8">TV 4.2</text>
+<text x="408" y="230" text-anchor="end" font-size="9" font-weight="800" fill="#ffffff" fill-opacity=".8">TV 4.3</text>
 </g><text id="cf-flash" class="cf-flash" x="210" y="53" text-anchor="middle"></text></svg>
 </div>
 <div class="cf-caption" id="cf-caption" aria-live="polite">🎙️ Прямая трансляция начинается</div><div class="cf-ctrl"><button class="s" data-cfspeed="1" onclick="cfSpeed(1)">▶ x1</button><button class="s" data-cfspeed="2" onclick="cfSpeed(2)">⏩ x2</button><button class="s" data-cfspeed="4" onclick="cfSpeed(4)">⚡ x4</button><button class="s" onclick="cfSkipMoment()">⏭ Момент</button></div>`}
@@ -554,6 +554,36 @@ function cfStartMotion(){
     }
    }
    if(!nodes||!targets||!pos)return;
+   // Continuous off-ball movement and regular passes, even between highlights.
+   // Driven by real time, not by jumps of the match-minute clock.
+   if(!root._cfGoalSequence){
+    if(!root._cfMotionEpoch)root._cfMotionEpoch=now;
+    const seconds=(now-root._cfMotionEpoch)/1000;
+    for(let p=0;p<22;p++){
+     const base=targets[p];if(!base)continue;
+     const isKeeper=p===0||p===11;
+     const run=isKeeper?2.5:9.5;
+     const rx=Math.sin(seconds*(isKeeper?.48:.94)+(p*1.73))*run;
+     const ry=Math.cos(seconds*(isKeeper?.55:1.12)+(p*2.13))*run*.76;
+     // Dynamic pressing and supporting runs while retaining team shape.
+     const support=!isKeeper&&p===root._cfOwner?5:0;
+     targets[p]=[Math.max(17,Math.min(403,base[0]+rx+support*(p<11?1:-1))),Math.max(17,Math.min(227,base[1]+ry))];
+    }
+    const opening=!!root._cfOpeningKickoff;
+    if(!opening&&!root._cfPass&&!root._cfShot){
+     if(!root._cfLastPass)root._cfLastPass=now;
+     if(now-root._cfLastPass>1650){
+      const old=root._cfOwner===undefined?8:root._cfOwner;
+      const teamStart=old<11?0:11;
+      const candidates=[5,6,7,8,9,10].map(v=>teamStart+v).filter(v=>v!==old);
+      // Prefer a nearby teammate, so passes look like realistic combinations.
+      candidates.sort((a,b)=>Math.hypot(pos[a][0]-pos[old][0],pos[a][1]-pos[old][1])-Math.hypot(pos[b][0]-pos[old][0],pos[b][1]-pos[old][1]));
+      const receiver=candidates[Math.floor(seconds/1.65)%Math.min(3,candidates.length)];
+      root._cfPass={from:root._cfPositions[23].slice(),owner:receiver,at:now,duration:630};
+      root._cfLastPass=now;
+     }
+    }
+   }
    for(let i=0;i<nodes.length;i++){
     let target=targets[i];if(!target)continue;
     if(i>=22){
@@ -596,7 +626,7 @@ function cfStartMotion(){
       const end=[receiver[0]+(pass.owner<11?8:-8),receiver[1]+5];
       const t=Math.max(0,Math.min(1,(now-pass.at)/(pass.duration||480))),ease=t*t*(3-2*t);
       target=[pass.from[0]+(end[0]-pass.from[0])*ease,pass.from[1]+(end[1]-pass.from[1])*ease-15*Math.sin(Math.PI*t)];
-      if(t>=1){root._cfPass=null;root._cfOwner=pass.owner;}
+      if(t>=1){root._cfPass=null;root._cfOwner=pass.owner;root._cfLastPass=now;}
      }else target=foot;
      pos[i][0]=target[0];pos[i][1]=target[1];
     }else{
@@ -655,8 +685,10 @@ function cfPaint(min,events,home,away){
   // Never restart a pass before the ball reaches its intended receiver.
   // The game clock can tick several times during one 480 ms pass.
   if(root._cfOwner===undefined){root._cfOwner=owner;}
-  else if(!root._cfGoalSequence&&!root._cfPass&&!root._cfShot&&root._cfOwner!==owner){
-   root._cfPass={from:root._cfPositions[23].slice(),owner,at:performance.now()};
+  else if(!root._cfGoalSequence&&!root._cfPass&&!root._cfShot&&root._cfOwner!==owner&&
+          (goal||upcoming||Math.floor(min/9)%2!==(root._cfOwner<11?1:0))){
+   // Switch possession on a meaningful attacking change, not every timer tick.
+   root._cfPass={from:root._cfPositions[23].slice(),owner,at:performance.now(),duration:720};
   }
   if(goal&&!root._cfGoalSequence&&root._cfGoalEvent!==goal){
    root._cfGoalEvent=goal;
