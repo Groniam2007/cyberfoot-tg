@@ -544,7 +544,7 @@ function cfPitch(){return `<div class="cf-field"><svg viewBox="0 0 420 244" role
 <rect x="12" y="216" width="112" height="19" rx="4" fill="#091728" fill-opacity=".88"/>
 <circle cx="23" cy="225" r="3.5" fill="#f24e58"/>
 <text x="32" y="229" font-size="9" font-weight="800" fill="#fff">CYBERFOOT LIVE</text>
-<text x="408" y="230" text-anchor="end" font-size="9" font-weight="800" fill="#ffffff" fill-opacity=".8">TV 3.6</text>
+<text x="408" y="230" text-anchor="end" font-size="9" font-weight="800" fill="#ffffff" fill-opacity=".8">TV 3.7</text>
 </g><text id="cf-flash" class="cf-flash" x="210" y="53" text-anchor="middle"></text></svg>
 </div>
 <div class="cf-caption" id="cf-caption" aria-live="polite">🎙️ Прямая трансляция начинается</div><div class="cf-ctrl"><button class="s" data-cfspeed="1" onclick="cfSpeed(1)">▶ x1</button><button class="s" data-cfspeed="2" onclick="cfSpeed(2)">⏩ x2</button><button class="s" data-cfspeed="4" onclick="cfSpeed(4)">⚡ x4</button><button class="s" onclick="cfSkipMoment()">⏭ Момент</button></div>`}
@@ -565,12 +565,21 @@ function cfStartMotion(){
    for(let i=0;i<nodes.length;i++){
     let target=targets[i];if(!target)continue;
     if(i>=22){
+     // Ball follows the receiver only after a pass has actually reached them.
      const owner=root._cfOwner,carrier=pos[owner]||targets[owner];
-     target=[carrier[0]+(owner<11?8:-8),carrier[1]+5];
+     const foot=[carrier[0]+(owner<11?8:-8),carrier[1]+5];
      const shot=root._cfShot,pass=root._cfPass;
-     if(shot){const t=Math.min(1,(now-shot.at)/600);target=[shot.from[0]+(shot.to[0]-shot.from[0])*t,shot.from[1]+(shot.to[1]-shot.from[1])*t];if(t>=1)root._cfShot=null}
-     else if(pass){const t=Math.min(1,(now-pass.at)/440);target=[pass.from[0]+(carrier[0]-pass.from[0])*t,pass.from[1]+(carrier[1]-pass.from[1])*t];if(t>=1)root._cfPass=null}
-     if(i===22)target=[target[0],target[1]];
+     if(shot){
+      const t=Math.min(1,(now-shot.at)/650),ease=t*t*(3-2*t);
+      target=[shot.from[0]+(shot.to[0]-shot.from[0])*ease,shot.from[1]+(shot.to[1]-shot.from[1])*ease];
+      if(t>=1)root._cfShot=null;
+     }else if(pass){
+      const receiver=pos[pass.owner]||targets[pass.owner];
+      const end=[receiver[0]+(pass.owner<11?8:-8),receiver[1]+5];
+      const t=Math.min(1,(now-pass.at)/600),ease=t*t*(3-2*t);
+      target=[pass.from[0]+(end[0]-pass.from[0])*ease,pass.from[1]+(end[1]-pass.from[1])*ease-15*Math.sin(Math.PI*t)];
+      if(t>=1)root._cfPass=null;
+     }else target=foot;
      pos[i][0]=target[0];pos[i][1]=target[1];
     }else{
      pos[i][0]+=(target[0]-pos[i][0])*alpha;
@@ -602,11 +611,9 @@ function cfPaint(min,events,home,away){
   const forward=t===0?1:-1,col=i===0?0:i<5?1:i<8?2:3,lane=i===0?0:(i%4)-1.5;
   let x=210+forward*(-160+col*85)+Math.sin(min*.22+i*2.4)*9;
   let y=122+lane*43+Math.cos(min*.17+i*1.7)*7;
-  if(t===team&&i===carrier){
-   x=210+dir*(18+phase*13);
-   y=122+Math.sin(min*.37)*39;
-  }
-  if((goal||upcoming)&&t===team&&i===9){x=210+dir*146;y=122+Math.sin(min*.5)*18}
+  // The player follows formation and makes a small run; no teleporting toward the ball.
+  if(t===team&&i===carrier){x+=dir*11;y+=Math.sin(min*.31)*5}
+  if((goal||upcoming)&&t===team&&i===9){x+=dir*18;y+=(122-y)*.22}
   positions.push([Math.max(18,Math.min(402,x)),Math.max(18,Math.min(226,y))]);
  }
  const owner=team*11+((goal||upcoming)?9:carrier);
@@ -621,7 +628,7 @@ function cfPaint(min,events,home,away){
   }
   root._cfTargets=positions.concat([positions[owner],positions[owner]]);
   if(root._cfOwner!==owner){
-   if(root._cfOwner!==undefined)root._cfPass={from:root._cfPositions[23].slice(),to:positions[owner].slice(),at:performance.now()};
+   if(root._cfOwner!==undefined)root._cfPass={from:root._cfPositions[23].slice(),owner,at:performance.now()};
    root._cfOwner=owner;
   }
   if(goal&&root._cfGoalMinute!==min){
