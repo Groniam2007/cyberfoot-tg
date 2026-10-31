@@ -456,9 +456,9 @@ if(G.ia!==0){const ks=['pk','fk','oo'].sort(()=>Math.random()-.5),n=[0,1,1,1,2,2
 const fin=()=>{x.gh=ev.filter(e=>e.t=='h').length;x.ga=ev.length-x.gh;clearInterval(TM);mmEnd();const w=us=='h'?x.gh>x.ga:x.ga>x.gh;if(w)boom();setTimeout(commit,w?900:300)};window.LVS=fin;
 $('app').innerHTML=`<div class='c'><div class='mu cap'>${lb||'Матч тура'}</div>${vs(h.name,a.name)}${cfPitch()}<div id='lv'></div><button class='s' onclick='LVS()'>⏭ Пропустить матч</button></div>`;
 const apply=(q,r)=>{if(!r)return;if(r.k=='goal'){ev.push({m:q.min,t:us,who:r.who});const p=U.squad.find(z=>z.n==r.who);if(p)p.g++;ev.sort((p,q)=>p.m-q.m)}else if(r.k=='save'&&q.ref){const i=ev.indexOf(q.ref);if(i>=0){ev.splice(i,1);const p=O.squad&&O.squad.find(z=>z.n==q.ref.who);if(p&&p.g>0)p.g--}}};
-const tick=()=>{if(busy)return;m=Math.min(90,m+(CF_SKIP_MOMENT?Math.max(1,Math.min(10,((ev.find(e=>e.m>m)||{m:m+8}).m-m))):CF_SPEED));CF_SKIP_MOMENT=false;window.CF_MINUTE=m;window.CF_MATCH={ev,home:h.name,away:a.name};cfPaint(m,ev,h.name,a.name);const q=mom.find(z=>!z.done&&z.min<=m);if(q){q.done=1;q.min=m;busy=1;clearInterval(TM);MM[q.k](q,r=>{apply(q,r);setTimeout(()=>{mmEnd();busy=0;TM=setInterval(tick,110)},1800)});return}
+const tick=()=>{if(busy)return;m=Math.min(90,m+(CF_SKIP_MOMENT?Math.max(1,Math.min(10,((ev.find(e=>e.m>m)||{m:m+8}).m-m))):CF_SPEED));CF_SKIP_MOMENT=false;window.CF_MINUTE=m;window.CF_MATCH={ev,home:h.name,away:a.name};cfPaint(m,ev,h.name,a.name);const q=mom.find(z=>!z.done&&z.min<=m);if(q){q.done=1;q.min=m;busy=1;clearInterval(TM);MM[q.k](q,r=>{apply(q,r);setTimeout(()=>{mmEnd();busy=0;TM=setInterval(tick,170)},1800)});return}
 const s=ev.filter(e=>e.m<=m),gh=s.filter(e=>e.t=='h').length;if(s.length>pg){gt=m;window.tgGoal&&tgGoal()}pg=s.length;const hot=m-gt<3;$('lv').innerHTML=`<div class='min'>${m}’</div>${hot?`<div class='gl'>ГОЛ! ⚽</div>`:''}<div class='sc ${hot?'pop':''}'>${gh} : ${s.length-gh}</div>`+s.map(e=>`<div>⚽ ${e.m}’ ${e.who} <span class='mu'>(${e.t=='h'?h.name:a.name})</span></div>`).join('')+(LV.length?`<h2>Живые результаты</h2>`+LV.filter(z=>z.h!=h.name&&z.a!=a.name).map(z=>{const e=z.ev.filter(y=>y.m<=m),g=e.filter(y=>y.t=='h').length;return`<div style='display:flex;justify-content:space-between;gap:8px'><span style='flex:1'>${z.h}</span><b>${g}:${e.length-g}</b><span style='flex:1;text-align:right'>${z.a}</span></div>`}).join(''):'');if(m>=90)fin()};
-TM=setInterval(tick,110)}
+TM=setInterval(tick,170)}
 var CT=0,MODE='car';
 const crest=(n,sz='')=>{n=String(n||'?');let k=7;for(const c of n)k=(k*31+c.charCodeAt(0))%3600;const w=n.replace(/[().]/g,' ').split(/[\s-]+/).filter(x=>x&&x.length>1),ab=(w.length>1?w[0][0]+w[1][0]:n.replace(/[^\p{L}]/gu,'').slice(0,2)).toUpperCase();return`<span class="cr ${sz}" style="--h:${k%360}" aria-hidden="true">${ab}</span>`};
 const vs=(x,y)=>`<div class="vs"><div>${crest(x,'lg')}<b>${x}</b></div><span>VS</span><div>${crest(y,'lg')}<b>${y}</b></div></div>`;
@@ -544,10 +544,36 @@ function cfPitch(){return `<div class="cf-field"><svg viewBox="0 0 420 244" role
 <rect x="12" y="216" width="112" height="19" rx="4" fill="#091728" fill-opacity=".88"/>
 <circle cx="23" cy="225" r="3.5" fill="#f24e58"/>
 <text x="32" y="229" font-size="9" font-weight="800" fill="#fff">CYBERFOOT LIVE</text>
-<text x="408" y="230" text-anchor="end" font-size="9" font-weight="800" fill="#ffffff" fill-opacity=".8">TV 3.4</text>
+<text x="408" y="230" text-anchor="end" font-size="9" font-weight="800" fill="#ffffff" fill-opacity=".8">TV 3.5</text>
 </g><text id="cf-flash" class="cf-flash" x="210" y="53" text-anchor="middle"></text></svg>
 </div>
 <div class="cf-caption" id="cf-caption" aria-live="polite">🎙️ Прямая трансляция начинается</div><div class="cf-ctrl"><button class="s" data-cfspeed="1" onclick="cfSpeed(1)">▶ x1</button><button class="s" data-cfspeed="2" onclick="cfSpeed(2)">⏩ x2</button><button class="s" data-cfspeed="4" onclick="cfSpeed(4)">⚡ x4</button><button class="s" onclick="cfSkipMoment()">⏭ Момент</button></div>`}
+// TV 3.5: independent animation frames; the match clock remains controlled by the original game.
+let CF_MOTION_RUNNING=false,CF_MOTION_LAST=0;
+function cfStartMotion(){
+ if(CF_MOTION_RUNNING)return;
+ CF_MOTION_RUNNING=true;CF_MOTION_LAST=0;
+ const frame=now=>{
+  const roots=document.querySelectorAll('#cf-pieces');
+  if(!roots.length){CF_MOTION_RUNNING=false;return}
+  const dt=CF_MOTION_LAST?Math.min(50,now-CF_MOTION_LAST):16;
+  CF_MOTION_LAST=now;
+  const alpha=1-Math.exp(-dt/125);
+  roots.forEach(root=>{
+   const nodes=root._cfNodes,targets=root._cfTargets,pos=root._cfPositions;
+   if(!nodes||!targets||!pos)return;
+   for(let i=0;i<nodes.length;i++){
+    const target=targets[i];if(!target)continue;
+    pos[i][0]+=(target[0]-pos[i][0])*alpha;
+    pos[i][1]+=(target[1]-pos[i][1])*alpha;
+    nodes[i].setAttribute('cx',pos[i][0].toFixed(2));
+    nodes[i].setAttribute('cy',pos[i][1].toFixed(2));
+   }
+  });
+  requestAnimationFrame(frame);
+ };
+ requestAnimationFrame(frame);
+}
 function cfPaint(min,events,home,away){
  const roots=document.querySelectorAll('#cf-pieces');if(!roots.length)return;
  const set=(id,value)=>document.querySelectorAll('#'+id).forEach(el=>el.textContent=value);
@@ -561,10 +587,10 @@ function cfPaint(min,events,home,away){
  const targetX=210+direction*(hit?45+phase*145:Math.sin(min*.20)*70),targetY=122+Math.sin(min*.17)*48;
  // Easing prevents the ball from jumping instantly across the pitch.
  if(!window.CF_BALL||min<window.CF_BALL.minute-2)window.CF_BALL={x:targetX,y:targetY,minute:min};
- const prev=window.CF_BALL,dx=targetX-prev.x,dy=targetY-prev.y,dist=Math.hypot(dx,dy),step=Math.min(dist,65);
+ const prev=window.CF_BALL,dx=targetX-prev.x,dy=targetY-prev.y,dist=Math.hypot(dx,dy),step=dist;
  const bx=prev.x+(dist?dx/dist*step:0),by=prev.y+(dist?dy/dist*step:0);
  window.CF_BALL={x:bx,y:by,minute:min};
- const pieces=[];
+ const positions=[];
  for(let team=0;team<2;team++)for(let i=0;i<11;i++){
   const isHome=team===0,forward=isHome?1:-1;
   const col=i===0?0:i<5?1:i<8?2:3;
@@ -572,11 +598,22 @@ function cfPaint(min,events,home,away){
   let x=210+forward*(-160+col*85)+Math.sin(min*.22+i*2.4)*9;
   let y=122+lane*43+Math.cos(min*.17+i*1.7)*7;
   if(hit&&((isHome&&hit.t==='h')||(!isHome&&hit.t==='a'))&&i===9){x=bx-direction*10;y=by-8}
-  pieces.push(`<circle class="cf-player" cx="${Math.max(18,Math.min(402,x)).toFixed(1)}" cy="${Math.max(18,Math.min(226,y)).toFixed(1)}" r="6.3" fill="${isHome?'#f2f4ff':'#e94d55'}" stroke="${isHome?'#4b5979':'#75262d'}" stroke-width="1.5"/>`);
+  positions.push([Math.max(18,Math.min(402,x)),Math.max(18,Math.min(226,y))]);
  }
- pieces.push(`<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="11" fill="none" stroke="#ffe071" stroke-width="1.6" stroke-opacity=".8" stroke-dasharray="3 3"/>`);
- pieces.push(`<circle class="cf-ball" cx="${Math.max(12,Math.min(408,bx)).toFixed(1)}" cy="${by.toFixed(1)}" r="4.2" fill="#fff" stroke="#152318" stroke-width="1.2"/>`);
- roots.forEach(root=>root.innerHTML=pieces.join(''));
+ roots.forEach(root=>{
+  if(!root.dataset.cfReady){
+   const pieces=[];
+   for(let i=0;i<22;i++)pieces.push(`<circle class="cf-player" cx="210" cy="122" r="6.3" fill="${i<11?'#f2f4ff':'#e94d55'}" stroke="${i<11?'#4b5979':'#75262d'}" stroke-width="1.5"/>`);
+   pieces.push('<circle class="cf-halo" cx="210" cy="122" r="11" fill="none" stroke="#ffe071" stroke-width="1.6" stroke-opacity=".8" stroke-dasharray="3 3"/>');
+   pieces.push('<circle class="cf-ball" cx="210" cy="122" r="4.2" fill="#fff" stroke="#152318" stroke-width="1.2"/>');
+   root.innerHTML=pieces.join('');
+   root.dataset.cfReady='1';
+   root._cfNodes=Array.from(root.querySelectorAll('circle'));
+   root._cfPositions=positions.concat([[bx,by],[bx,by]]).map(p=>p.slice());
+  }
+  root._cfTargets=positions.concat([[bx,by],[bx,by]]);
+ });
+ cfStartMotion();
  const captions=document.querySelectorAll('#cf-caption'),flashes=document.querySelectorAll('#cf-flash');
  if(hit){const who=hit.who||'Игрок';captions.forEach(caption=>caption.textContent=hit.m<=min?`⚽ ${hit.m}’ ${who} — ${hit.t==='h'?home:away}!`:`🔥 Опасная атака: ${hit.t==='h'?home:away}!`);flashes.forEach(flash=>flash.textContent=hit.m===min?'ГОООЛ!':'');}
  else{captions.forEach(caption=>caption.textContent=min+'’ · ⚽ Мяч у команды «'+(right?home:away)+'» · идёт атака');flashes.forEach(flash=>flash.textContent='')}
