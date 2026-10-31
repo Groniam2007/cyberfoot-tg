@@ -511,7 +511,7 @@ function cfPitch(){return `<div class="cf-field"><svg viewBox="0 0 420 244" role
 <rect x="12" y="216" width="112" height="19" rx="4" fill="#091728" fill-opacity=".88"/>
 <circle cx="23" cy="225" r="3.5" fill="#f24e58"/>
 <text x="32" y="229" font-size="9" font-weight="800" fill="#fff">CYBERFOOT LIVE</text>
-<text x="408" y="230" text-anchor="end" font-size="9" font-weight="800" fill="#ffffff" fill-opacity=".8">TV 4.0</text>
+<text x="408" y="230" text-anchor="end" font-size="9" font-weight="800" fill="#ffffff" fill-opacity=".8">TV 4.1</text>
 </g><text id="cf-flash" class="cf-flash" x="210" y="53" text-anchor="middle"></text></svg>
 </div>
 <div class="cf-caption" id="cf-caption" aria-live="polite">🎙️ Прямая трансляция начинается</div><div class="cf-ctrl"><button class="s" data-cfspeed="1" onclick="cfSpeed(1)">▶ x1</button><button class="s" data-cfspeed="2" onclick="cfSpeed(2)">⏩ x2</button><button class="s" data-cfspeed="4" onclick="cfSpeed(4)">⚡ x4</button><button class="s" onclick="cfSkipMoment()">⏭ Момент</button></div>`}
@@ -528,6 +528,14 @@ function cfStartMotion(){
   const alpha=1-Math.exp(-dt/125);
   roots.forEach(root=>{
    const nodes=root._cfNodes,targets=root._cfTargets,pos=root._cfPositions;
+   // Opening kickoff: position two players at centre and animate the first pass.
+   if(root._cfOpeningKickoff){
+    const opening=root._cfOpeningKickoff;
+    if(now-opening.at<1550&&!root._cfGoalSequence){
+     targets[9]=[200,122];
+     targets[8]=[174,139];
+    }else root._cfOpeningKickoff=null;
+   }
    if(root._cfGoalSequence){
     const elapsed=now-root._cfGoalSequence.at;
     if(elapsed>=1350&&elapsed<3400){
@@ -583,7 +591,7 @@ function cfStartMotion(){
      }else if(pass){
       const receiver=pos[pass.owner]||targets[pass.owner];
       const end=[receiver[0]+(pass.owner<11?8:-8),receiver[1]+5];
-      const t=Math.min(1,(now-pass.at)/(pass.duration||480)),ease=t*t*(3-2*t);
+      const t=Math.max(0,Math.min(1,(now-pass.at)/(pass.duration||480))),ease=t*t*(3-2*t);
       target=[pass.from[0]+(end[0]-pass.from[0])*ease,pass.from[1]+(end[1]-pass.from[1])*ease-15*Math.sin(Math.PI*t)];
       if(t>=1){root._cfPass=null;root._cfOwner=pass.owner;}
      }else target=foot;
@@ -631,7 +639,14 @@ function cfPaint(min,events,home,away){
    pieces.push('<circle class="cf-halo" cx="210" cy="122" r="11" fill="none" stroke="#ffe071" stroke-width="1.6" stroke-opacity=".8" stroke-dasharray="3 3"/>');
    pieces.push('<circle class="cf-ball" cx="210" cy="122" r="4.2" fill="#fff" stroke="#152318" stroke-width="1.2"/>');
    root.innerHTML=pieces.join('');root.dataset.cfReady='1';root._cfNodes=Array.from(root.querySelectorAll('circle'));
-   root._cfPositions=positions.concat([positions[owner],positions[owner]]).map(p=>p.slice());
+   root._cfPositions=positions.concat([[210,122],[210,122]]).map(p=>p.slice());
+   // Start the broadcast with a real kickoff instead of a stationary ball.
+   const startAt=performance.now();
+   root._cfOpeningKickoff={at:startAt};
+   root._cfOwner=9;
+   root._cfPass={from:[210,122],owner:8,at:startAt+650,duration:850};
+   root._cfPositions[9]=[200,122];
+   root._cfPositions[8]=[174,139];
   }
   if(!root._cfGoalSequence)root._cfTargets=positions.concat([positions[owner],positions[owner]]);
   // Never restart a pass before the ball reaches its intended receiver.
