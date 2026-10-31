@@ -511,7 +511,7 @@ function cfPitch(){return `<div class="cf-field"><svg viewBox="0 0 420 244" role
 <rect x="12" y="216" width="112" height="19" rx="4" fill="#091728" fill-opacity=".88"/>
 <circle cx="23" cy="225" r="3.5" fill="#f24e58"/>
 <text x="32" y="229" font-size="9" font-weight="800" fill="#fff">CYBERFOOT LIVE</text>
-<text x="408" y="230" text-anchor="end" font-size="9" font-weight="800" fill="#ffffff" fill-opacity=".8">TV 3.8</text>
+<text x="408" y="230" text-anchor="end" font-size="9" font-weight="800" fill="#ffffff" fill-opacity=".8">TV 3.9</text>
 </g><text id="cf-flash" class="cf-flash" x="210" y="53" text-anchor="middle"></text></svg>
 </div>
 <div class="cf-caption" id="cf-caption" aria-live="polite">🎙️ Прямая трансляция начинается</div><div class="cf-ctrl"><button class="s" data-cfspeed="1" onclick="cfSpeed(1)">▶ x1</button><button class="s" data-cfspeed="2" onclick="cfSpeed(2)">⏩ x2</button><button class="s" data-cfspeed="4" onclick="cfSpeed(4)">⚡ x4</button><button class="s" onclick="cfSkipMoment()">⏭ Момент</button></div>`}
@@ -528,6 +528,20 @@ function cfStartMotion(){
   const alpha=1-Math.exp(-dt/125);
   roots.forEach(root=>{
    const nodes=root._cfNodes,targets=root._cfTargets,pos=root._cfPositions;
+   if(root._cfGoalSequence){
+    const elapsed=now-root._cfGoalSequence.at;
+    if(elapsed>=1550&&elapsed<3100){
+     // After the goal, players return to their halves for the restart.
+     for(let p=0;p<22;p++){
+      const home=p<11,idx=p%11,side=home?-1:1;
+      const col=idx===0?0:idx<5?1:idx<8?2:3;
+      const lane=idx===0?0:(idx%4)-1.5;
+      const x=210+side*(160-col*39);
+      targets[p]=[Math.max(20,Math.min(400,x)),Math.max(20,Math.min(224,122+lane*38))];
+     }
+     targets[root._cfGoalSequence.kickOwner]=[root._cfGoalSequence.kickHome?201:219,122];
+    }
+   }
    if(!nodes||!targets||!pos)return;
    for(let i=0;i<nodes.length;i++){
     let target=targets[i];if(!target)continue;
@@ -535,6 +549,26 @@ function cfStartMotion(){
      // Ball follows the receiver only after a pass has actually reached them.
      const owner=root._cfOwner,carrier=pos[owner]||targets[owner];
      const foot=[carrier[0]+(owner<11?8:-8),carrier[1]+5];
+     const seq=root._cfGoalSequence;
+     if(seq){
+      const elapsed=now-seq.at;
+      if(elapsed<850){
+       const t=Math.min(1,elapsed/850),ease=t*t*(3-2*t);
+       // The ball crosses the actual goal line, inside the posts.
+       target=[seq.from[0]+(seq.goalX-seq.from[0])*ease,seq.from[1]+(122-seq.from[1])*ease];
+      }else if(elapsed<1550){target=[seq.goalX,122]}
+      else if(elapsed<2200){
+       const t=Math.min(1,(elapsed-1550)/650),ease=t*t*(3-2*t);
+       target=[seq.goalX+(210-seq.goalX)*ease,122];
+      }else if(elapsed<3100){target=[210,122]}
+      else{root._cfGoalSequence=null;root._cfOwner=seq.kickOwner;root._cfPass=null;target=[210,122]}
+      if(root._cfGoalSequence){
+       pos[i][0]=target[0];pos[i][1]=target[1];
+       nodes[i].setAttribute('cx',pos[i][0].toFixed(2));
+       nodes[i].setAttribute('cy',pos[i][1].toFixed(2));
+       continue;
+      }
+     }
      const shot=root._cfShot,pass=root._cfPass;
      if(shot){
       const t=Math.min(1,(now-shot.at)/650),ease=t*t*(3-2*t);
@@ -597,14 +631,16 @@ function cfPaint(min,events,home,away){
   // Never restart a pass before the ball reaches its intended receiver.
   // The game clock can tick several times during one 480 ms pass.
   if(root._cfOwner===undefined){root._cfOwner=owner;}
-  else if(!root._cfPass&&!root._cfShot&&root._cfOwner!==owner){
+  else if(!root._cfGoalSequence&&!root._cfPass&&!root._cfShot&&root._cfOwner!==owner){
    root._cfPass={from:root._cfPositions[23].slice(),owner,at:performance.now()};
   }
   if(goal&&root._cfGoalMinute!==min){
    root._cfGoalMinute=min;
    root._cfPass=null;
    root._cfOwner=owner;
-   root._cfShot={from:root._cfPositions[23].slice(),to:[dir>0?410:10,122+Math.sin(min*3)*13],at:performance.now()};
+   root._cfShot=null;
+   const kickHome=!isHome;
+   root._cfGoalSequence={from:root._cfPositions[23].slice(),goalX:dir>0?418:2,at:performance.now(),kickOwner:kickHome?9:20,kickHome};
   }
  });
  cfStartMotion();
