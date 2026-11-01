@@ -242,7 +242,15 @@ html.tg .ts{top:calc(12px + max(env(safe-area-inset-top,0px),var(--tgt)))}
 .cf-ctrl button{flex:1;min-width:65px;padding:7px 5px;font-size:12px}
 .cf-moment-field .cf-field{max-height:230px}
 @media(max-width:400px){.cf-tv-score span{max-width:78px;font-size:9px}.cf-tv-clock{font-size:11px}}
-</style></head><body><div id="app"></div>
+</style><style>
+#cf-hero-overlay{position:fixed;inset:0;z-index:999999;background:#071729;color:white;overflow:hidden;touch-action:none;font-family:system-ui,sans-serif}
+#cf-hero-canvas{display:block;width:100%;height:100%;touch-action:none}
+.cf-hero-top{position:absolute;top:max(18px,env(safe-area-inset-top));left:14px;right:14px;display:flex;justify-content:space-between;gap:12px;font-weight:900;font-size:12px;text-shadow:0 2px 8px #000}
+.cf-hero-hint{position:absolute;top:14%;left:8%;right:8%;background:#08182cbb;border:1px solid #ffffff40;border-radius:12px;padding:12px;text-align:center;font-weight:700;font-size:14px;pointer-events:none}
+.cf-hero-bottom{position:absolute;bottom:max(28px,env(safe-area-inset-bottom));left:16px;right:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:800}
+.cf-hero-bottom button{background:#ffd54c;color:#101927;border:0;border-radius:12px;padding:12px 18px;font-weight:900}
+</style>
+</head><body><div id="app"></div>
 <script>
 const L={
 "Англия":["Манчестер Сити:84","Арсенал:83","Ливерпуль:83","Челси:79","Манчестер Юнайтед:77","Тоттенхэм:77","Ньюкасл:77","Астон Вилла:76","Брайтон:73","Вест Хэм:72","Брентфорд:70","Фулхэм:70"],
@@ -450,10 +458,110 @@ MM.pk=(m,done)=>{const p=bst(me(),['FWD','MID']);mmBox(`<h3>⚽ Пенальти
 MM.fk=(m,done)=>{const p=bst(me(),['MID','FWD']),ds=R(18,32),base=C(.5-(ds-18)*.028,.08,.5)+(p.r-75)/300;let side=1,pos=0,dr=1,tm=null;const draw=()=>mmBox(`<h3>🎯 Штрафной! ${m.min}’</h3><p>${p.n}, до ворот ${ds} м. Чем дальше, тем сложнее.</p><div class='mu'>Закрутка:</div><div class='row' style='justify-content:center'>${['↖️ Влево','⬆️ Прямо','↗️ Вправо'].map((o,i)=>`<button class='${side==i?'':'s'}' onclick='MMs(${i})'>${o}</button>`).join('')}</div><div style='margin:16px 0;height:16px;border-radius:8px;background:linear-gradient(90deg,#c33,#fc3 35%,#3c5 50%,#fc3 65%,#c33)'><div id='mk' style='position:relative;left:0%;width:8px;height:20px;top:-2px;background:#fff;border-radius:4px'></div></div><button onclick='MMg()'>Бить!</button>`);draw();window.MMs=i=>{side=i;draw()};tm=setInterval(()=>{pos+=dr*3;if(pos>=100||pos<=0)dr*=-1;const e=document.getElementById('mk');if(e)e.style.left=pos+'%'},30);window.MMg=()=>{clearInterval(tm);const acc=1-Math.abs(pos-50)/50,w=R(0,2),ch=C(base*(.25+1.1*acc)+(side!=w?.06:-.04),.02,.75),ok=Math.random()<ch;mmRes(ok,ok?'Мяч по дуге влетает в ворота!':(acc<.5?'Неточный удар — мяч улетел над воротами.':'Вратарь вытащил мяч!')+' (точность '+Math.round(acc*100)+'%)',{k:ok?'goal':'miss',min:m.min,who:p.n},done)}};
 MM.sv=(m,done)=>{const o=oppT(),sh=m.ref?{n:m.ref.who}:bst(o,['FWD','MID']),gk=lu(me()).find(x=>x.pos=='GK')||{n:'Вратарь',r:70},dir=R(0,2),hint=Math.random()<.55?dir:R(0,2);mmBox(`<h3>🧤 Сейв! ${m.min}’</h3><p>${sh.n} бьёт по твоим воротам. Он смотрит ${['влево','в центр','вправо'][hint]}. Куда прыгнет ${gk.n}?</p>${mmBtns(['⬅️ Влево','⬆️ Стоять','➡️ Вправо'],'MMv')}`);window.MMv=d=>{const hit=d==dir,ok=hit&&Math.random()<C(.8+(gk.r-70)/150,.6,.93);mmBox(`<h3>${ok?'🧤 СЕЙВ!':'😬 Гол...'}</h3><p>${ok?'Потрясающий сейв! Гол отменён.':hit?'Достал, но мяч всё равно в сетке.':'Не угадал — мяч в твоих воротах.'}</p>`);done({k:ok?'save':'conc',min:m.min})}};
 MM.oo=(m,done)=>{const p=bst(me(),['FWD','MID']),k=R(0,2),hint=Math.random()<.55?k:R(0,2);mmBox(`<h3>🏃 Один на один! ${m.min}’</h3><p>${p.n} выходит к воротам. Вратарь ${['выбегает навстречу','стоит на линии','бросается в ноги заранее'][hint]}. Что делаем?</p>${mmBtns(['💥 Пушка','🕺 Обвести','🪂 Скинуть'],'MMo')}`);window.MMo=c=>{const beat=[1,2,0][c],ok=Math.random()<(beat==k?.88:.22);mmRes(ok,ok?'Вратарь в ауте — гол!':'Вратарь справился.',{k:ok?'goal':'miss',min:m.min,who:p.n},done)}};
+/* CyberFoot Hero Camera: fullscreen perspective set pieces, no external dependencies. */
+let CF_HERO_ACTIVE=null;
+function cfHeroClose(){if(CF_HERO_ACTIVE){CF_HERO_ACTIVE.dead=true;CF_HERO_ACTIVE=null}document.getElementById('cf-hero-overlay')?.remove()}
+function cfHeroScene(mode,m,actor,skill,done){
+ cfHeroClose();
+ const old=document.getElementById('mmb');if(old)old.remove();
+ const layer=document.createElement('div');layer.id='cf-hero-overlay';layer.innerHTML=`<canvas id="cf-hero-canvas"></canvas><div class="cf-hero-top"><span>⚽ CYBERFOOT HERO</span><span>${m.min}’ · ${mode==='pk'?'ПЕНАЛЬТИ':mode==='fk'?'ШТРАФНОЙ':'СЕЙВ'}</span></div><div class="cf-hero-hint" id="cf-hero-hint">${mode==='sv'?'Проведи от вратаря к углу ворот, куда хочешь прыгнуть':'Проведи пальцем от мяча к точке ворот — задай траекторию удара'}</div><div class="cf-hero-bottom"><span>${actor}</span><button type="button" id="cf-hero-auto">🎯 Авто</button></div>`;
+ document.body.appendChild(layer);
+ const canvas=layer.querySelector('canvas'),ctx=canvas.getContext('2d',{alpha:false});
+ const scene={dead:false,mode,m,actor,skill,done,phase:'aim',start:null,path:[],ball:null,keeper:0,result:null,started:performance.now()};CF_HERO_ACTIVE=scene;
+ const resize=()=>{if(scene.dead)return;const d=Math.min(devicePixelRatio||1,2),w=layer.clientWidth,h=layer.clientHeight;canvas.width=Math.round(w*d);canvas.height=Math.round(h*d);canvas.style.width=w+'px';canvas.style.height=h+'px';ctx.setTransform(d,0,0,d,0,0)};
+ resize();window.addEventListener('resize',resize,{passive:true});
+ const point=e=>{const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}};
+ const geo=()=>{const w=canvas.clientWidth,h=canvas.clientHeight;return{w,h,cx:w/2,gy:h*.33,gw:Math.min(w*.78,h*.65),gh:Math.min(h*.22,145),by:h*.77}};
+ const shot=(x,y,auto=false)=>{
+  if(scene.phase!=='aim')return;
+  const g=geo(),half=g.gw/2;
+  const nx=Math.max(-1.3,Math.min(1.3,(x-g.cx)/half)),ny=Math.max(0,Math.min(1.5,(g.gy+g.gh-y)/g.gh));
+  const accuracy=Math.max(0,1-Math.max(0,Math.abs(nx)-.92)*2.7-Math.max(0,ny-1)*2.4);
+  const keeperSide=Math.random()*1.6-.8;
+  scene.keeper=keeperSide;
+  const within=Math.abs(nx)<.97&&ny<1.08&&ny>.02;
+  let success=false;
+  if(mode==='sv'){
+   const ballSide=Math.random()*1.7-.85;
+   scene.aimX=ballSide;scene.aimY=.32+Math.random()*.58;
+   scene.keeper=nx;
+   success=Math.abs(nx-ballSide)<(.40+(skill-70)/500)&&Math.random()<.87;
+  }else{
+   scene.aimX=nx;scene.aimY=ny;
+   const close=Math.abs(nx-keeperSide)<.35&&ny<.72;
+   const chance=mode==='pk'?Math.min(.96,Math.max(.38,.86+(skill-75)/500-(close?.38:0))):Math.min(.72,Math.max(.04,.34+(skill-75)/430-(close?.18:0)));
+   success=within&&Math.random()<chance*accuracy;
+  }
+  scene.result=success;scene.phase='flight';scene.flightAt=performance.now();scene.path=scene.path.length?scene.path:[{x:g.cx,y:g.by},{x,y}];
+  layer.querySelector('#cf-hero-hint').textContent=mode==='sv'?'🧤 Вратарь прыгает!':'💥 УДАР!';
+  layer.querySelector('#cf-hero-auto').style.display='none';
+ };
+ let drawing=false;
+ canvas.addEventListener('pointerdown',e=>{if(scene.phase!=='aim')return;drawing=true;canvas.setPointerCapture(e.pointerId);scene.path=[point(e)]});
+ canvas.addEventListener('pointermove',e=>{if(drawing&&scene.phase==='aim')scene.path.push(point(e))});
+ canvas.addEventListener('pointerup',e=>{if(!drawing)return;drawing=false;const p=point(e);scene.path.push(p);shot(p.x,p.y)});
+ canvas.addEventListener('pointercancel',()=>drawing=false);
+ layer.querySelector('#cf-hero-auto').onclick=()=>{const g=geo();shot(g.cx+(Math.random()-.5)*g.gw*.7,g.gy+g.gh*.48,true)};
+ const poly=(pts,fill,stroke,line=1)=>{ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=line;ctx.stroke()}};
+ const person=(x,y,scale,shirt,arms=0)=>{ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(0,6,23,8,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#172b3e';ctx.lineWidth=10;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-8,-27);ctx.lineTo(-12,0);ctx.moveTo(8,-27);ctx.lineTo(13,0);ctx.stroke();ctx.strokeStyle=shirt;ctx.lineWidth=18;ctx.beginPath();ctx.moveTo(0,-70);ctx.lineTo(0,-27);ctx.stroke();ctx.strokeStyle=shirt;ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(0,-65);ctx.lineTo(-22,-43+arms);ctx.moveTo(0,-65);ctx.lineTo(22,-43-arms);ctx.stroke();ctx.fillStyle='#e3b78b';ctx.beginPath();ctx.arc(0,-83,11,0,Math.PI*2);ctx.fill();ctx.restore()};
+ const frame=now=>{
+  if(scene.dead)return;
+  const g=geo(),{w,h,cx,gy,gw,gh,by}=g;
+  const sky=ctx.createLinearGradient(0,0,0,h);sky.addColorStop(0,'#081a34');sky.addColorStop(.42,'#17364c');sky.addColorStop(1,'#0d3b27');ctx.fillStyle=sky;ctx.fillRect(0,0,w,h);
+  // Stadium terraces and floodlights, with perspective grass and pitch markings.
+  for(let i=0;i<9;i++){ctx.fillStyle=i%2?'#182c43':'#213951';ctx.fillRect(0,h*.10+i*h*.023,w,h*.023)}
+  for(let i=0;i<70;i++){const x=(i*97%1000)/1000*w,y=h*.11+(i*31%180)/1000*h;ctx.fillStyle=['#6c829a','#a3aeb4','#c4a28c'][i%3];ctx.fillRect(x,y,3,2)}
+  poly([[0,h*.47],[w,h*.47],[w*1.18,h],[w*-.18,h]],'#287849');
+  for(let i=0;i<9;i++){const t=i/9,y=h*.47+(h*.53)*t*t;ctx.strokeStyle=i%2?'rgba(20,65,34,.15)':'rgba(95,178,92,.15)';ctx.lineWidth=8+18*t;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
+  const goalBottom=gy+gh;
+  poly([[cx-gw*.55,goalBottom],[cx+gw*.55,goalBottom],[cx+gw*.70,goalBottom+gh*.32],[cx-gw*.70,goalBottom+gh*.32]],'rgba(230,240,247,.13)','#dcebf0',2);
+  ctx.strokeStyle='#effaff';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(cx-gw/2,goalBottom);ctx.lineTo(cx-gw/2,gy);ctx.lineTo(cx+gw/2,gy);ctx.lineTo(cx+gw/2,goalBottom);ctx.stroke();
+  ctx.strokeStyle='rgba(230,245,255,.3)';ctx.lineWidth=1;
+  for(let i=1;i<9;i++){let x=cx-gw/2+i*gw/9;ctx.beginPath();ctx.moveTo(x,gy);ctx.lineTo(x,goalBottom);ctx.stroke()}
+  for(let i=1;i<5;i++){let y=gy+i*gh/5;ctx.beginPath();ctx.moveTo(cx-gw/2,y);ctx.lineTo(cx+gw/2,y);ctx.stroke()}
+  ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(cx,by+14,w*.24,h*.09,0,Math.PI,Math.PI*2);ctx.stroke();
+  const progress=scene.phase==='flight'?Math.min(1,(now-scene.flightAt)/1100):0;
+  const ease=progress*progress*(3-2*progress);
+  const keeperX=cx+(scene.phase==='flight'?scene.keeper*gw*.36*ease:Math.sin(now/570)*5);
+  person(keeperX,goalBottom+12,.7,'#f9ba2f',scene.phase==='flight'?20*ease:0);
+  if(mode==='fk'){for(let i=-2;i<=2;i++)person(cx+i*gw*.095,goalBottom+gh*.49,.62,'#ed5566')}
+  if(mode==='sv')person(cx,by+15,1.05,'#ffdc4b');else person(cx-gw*.23,by+25,1.06,'#edf1ff');
+  let ballX=cx,ballY=by,rad=14;
+  if(scene.phase==='flight'){
+   ballX=cx+(scene.aimX||0)*gw*.5*ease;
+   ballY=by+(gy+gh*(1-(scene.aimY||.5))-by)*ease-60*Math.sin(Math.PI*progress);
+   rad=14-8*ease;
+  }
+  ctx.fillStyle='rgba(0,0,0,.24)';ctx.beginPath();ctx.ellipse(ballX+5,ballY+14,rad*1.1,rad*.4,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(ballX,ballY,rad,0,Math.PI*2);ctx.fill();ctx.fillStyle='#1c2a38';ctx.beginPath();ctx.arc(ballX,ballY,rad*.4,0,Math.PI*2);ctx.fill();
+  if(scene.phase==='aim'){
+   ctx.setLineDash([7,7]);ctx.lineWidth=4;ctx.strokeStyle='#f9df5c';ctx.beginPath();
+   if(scene.path.length){scene.path.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y))}else{ctx.moveTo(cx,by);ctx.quadraticCurveTo(cx+gw*.17,by*.6,cx+gw*.22,gy+gh*.4)}ctx.stroke();ctx.setLineDash([]);
+  }
+  if(scene.phase==='flight'&&progress>=1){
+   scene.phase='result';scene.resultAt=now;
+   layer.querySelector('#cf-hero-hint').textContent=scene.result?(mode==='sv'?'🧤 НЕВЕРОЯТНЫЙ СЕЙВ!':'⚽ ГООООЛ!'):(mode==='sv'?'⚽ ГОЛ — НЕ УСПЕЛ!':'❌ НЕ ЗАБИЛ!');
+  }
+  if(scene.phase==='result'&&now-scene.resultAt>1150){
+   const success=scene.result;
+   cfHeroClose();
+   if(mode==='sv')done({k:success?'save':'conc',min:m.min});
+   else done({k:success?'goal':'miss',min:m.min,who:actor});
+   return;
+  }
+  requestAnimationFrame(frame);
+ };
+ requestAnimationFrame(frame);
+}
+// Replace only set-piece mini-games. Existing match result application stays authoritative.
+MM.pk=(m,done)=>{const p=bst(me(),['FWD','MID']);cfHeroScene('pk',m,p.n,p.r,done)};
+MM.fk=(m,done)=>{const p=bst(me(),['MID','FWD']);cfHeroScene('fk',m,p.n,p.r,done)};
+MM.sv=(m,done)=>{const gk=lu(me()).find(x=>x.pos==='GK')||{n:'Вратарь',r:70};cfHeroScene('sv',m,gk.n,gk.r,done)};
+
 const cupPair=()=>{const c=G.cup,n=me().name;if(c.ph){const i=c.al.indexOf(n)&~1;return[tm(c.al[i]),tm(c.al[i+1])]}const i=c.lg.indexOf(n),m=c.fx[c.ld].find(([a,b])=>a==i||b==i);return[tm(c.lg[m[0]]),tm(c.lg[m[1]])]};
 function liveIA(h,a,lb,commit){clearInterval(TM);cfDirectorReset();const x=G.pc[h.name+'|'+a.name],us=h.user?'h':'a',op=us=='h'?'a':'h',U=h.user?h:a,O=h.user?a:h,ev=x.ev,LV=(G.lv||[]).slice();window.MMO=O;let m=0,gt=-99,pg=0,busy=0,mom=[];
 if(G.ia!==0){const ks=['pk','fk','oo'].sort(()=>Math.random()-.5),n=[0,1,1,1,2,2][R(0,5)],used=[];ks.slice(0,n).forEach(k=>{let t=R(8,86),z=0;while(used.some(u=>Math.abs(u-t)<10)&&z++<20)t=R(8,86);used.push(t);mom.push({k,min:t})});ev.filter(e=>e.t==op).slice(0,3).forEach(e=>{if(Math.random()<.5)mom.push({k:'sv',min:e.m,ref:e})});mom.sort((p,q)=>p.min-q.min)}
-const fin=()=>{x.gh=ev.filter(e=>e.t=='h').length;x.ga=ev.length-x.gh;clearInterval(TM);mmEnd();const w=us=='h'?x.gh>x.ga:x.ga>x.gh;if(w)boom();setTimeout(commit,w?900:300)};window.LVS=fin;
+const fin=()=>{cfHeroClose();x.gh=ev.filter(e=>e.t=='h').length;x.ga=ev.length-x.gh;clearInterval(TM);mmEnd();const w=us=='h'?x.gh>x.ga:x.ga>x.gh;if(w)boom();setTimeout(commit,w?900:300)};window.LVS=fin;
 $('app').innerHTML=`<div class='c'><div class='mu cap'>${lb||'Матч тура'}</div>${vs(h.name,a.name)}${cfPitch()}<div id='lv'></div><button class='s' onclick='LVS()'>⏭ Пропустить матч</button></div>`;
 window.CF_MINUTE=0;window.CF_MATCH={ev,home:h.name,away:a.name};cfPaint(0,ev,h.name,a.name);
 const apply=(q,r)=>{if(!r)return;if(r.k=='goal'){ev.push({m:q.min,t:us,who:r.who});const p=U.squad.find(z=>z.n==r.who);if(p)p.g++;ev.sort((p,q)=>p.m-q.m)}else if(r.k=='save'&&q.ref){const i=ev.indexOf(q.ref);if(i>=0){ev.splice(i,1);const p=O.squad&&O.squad.find(z=>z.n==q.ref.who);if(p&&p.g>0)p.g--}}};
@@ -547,7 +655,7 @@ function cfPitch(){return `<div class="cf-field"><svg viewBox="0 0 420 244" role
 <rect x="12" y="216" width="112" height="19" rx="4" fill="#091728" fill-opacity=".88"/>
 <circle cx="23" cy="225" r="3.5" fill="#f24e58"/>
 <text x="32" y="229" font-size="9" font-weight="800" fill="#fff">CYBERFOOT LIVE</text>
-<text x="408" y="230" text-anchor="end" font-size="9" font-weight="800" fill="#ffffff" fill-opacity=".8">TV 5.0</text>
+<text x="408" y="230" text-anchor="end" font-size="9" font-weight="800" fill="#ffffff" fill-opacity=".8">TV 5.1</text>
 </g><text id="cf-flash" class="cf-flash" x="210" y="53" text-anchor="middle"></text></svg>
 </div>
 <div class="cf-caption" id="cf-caption" aria-live="polite">🎙️ Прямая трансляция начинается</div><div class="cf-ctrl"><button class="s" data-cfspeed="1" onclick="cfSpeed(1)">▶ x1</button><button class="s" data-cfspeed="2" onclick="cfSpeed(2)">⏩ x2</button><button class="s" data-cfspeed="4" onclick="cfSpeed(4)">⚡ x4</button><button class="s" onclick="cfSkipMoment()">⏭ Момент</button></div>`}
