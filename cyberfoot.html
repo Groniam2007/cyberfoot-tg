@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>CyberFoot Web</title>
+<html lang="ru"><head><script src="https://telegram.org/js/telegram-web-app.js"></script><meta charset="utf-8"><meta name="cf-admin-api" content=""><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>CyberFoot Web</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Oswald:wght@500;600;700&family=Unbounded:wght@600;800&display=swap"><style>
 /* Layout: matchday programme under floodlights — night-navy ground, chalk type, floodlight gold for actions, shield monograms for clubs. One committed dark look. */
 :root{
@@ -309,6 +309,7 @@ function unpackSave(data){
 const readSlot=n=>{try{const s=localStorage.getItem(slotKey(n));return s?JSON.parse(unpackSave(s)):null}catch(e){console.warn('Не удалось прочитать слот '+n,e);return null}};
 let saveWarning=false;
 const save=()=>{
+  if(window.CFAdmin?.isPromo())return window.CFAdmin.savePromo();
   if(!ACTIVE_SLOT||!G)return false;
   cfEnsureCareer();
   try{
@@ -932,4 +933,172 @@ function cfPenaltyShow(rep,done){
  timeoutId=setTimeout(next,500);
 }
 
-</script></body></html>
+</script><script>
+/* CyberFoot owner tools. All server permissions come from verified Telegram initData. */
+(() => {
+  'use strict';
+  // Telegram production public key. No bot token is required for Ed25519 validation.
+const TELEGRAM_PUBLIC_KEY = 'e7bf03a2fa4602af4580703d88dda5bb59f32ed8b02a56c187fe7d34caed242d';
+const OWNER_ID = '774885402';
+class ApiError extends Error {
+  constructor(status, code) { super(code); this.status = status; this.code = code; }
+}
+async function verifySignedData(raw, botId, publicKey, now = Math.floor(Date.now()/1000)) {
+  if (!/^[1-9]\d{0,19}$/.test(String(botId || ''))) throw new ApiError(503, 'NOT_CONFIGURED');
+  if (typeof raw !== 'string' || !raw || raw.length > 16384) throw new ApiError(401, 'INVALID_AUTH');
+  const data = new URLSearchParams(raw), seen = new Set();
+  for (const [key] of data) {
+    if (seen.has(key)) throw new ApiError(401, 'INVALID_AUTH');
+    seen.add(key);
+  }
+  const stamp = data.get('auth_date');
+  if (!/^\d{1,12}$/.test(stamp || '')) throw new ApiError(401, 'INVALID_AUTH');
+  const age = now - Number(stamp);
+  if (age < -30 || age > 3600) throw new ApiError(401, 'AUTH_EXPIRED');
+  const signature = data.get('signature');
+  if (!/^[A-Za-z0-9_-]{86}(==)?$/.test(signature || '')) throw new ApiError(401, 'INVALID_AUTH');
+  const fields = [...data].filter(([k]) => k !== 'hash' && k !== 'signature').sort(([a],[b]) => a < b ? -1 : a > b ? 1 : 0);
+  const message = `${botId}:WebAppData\n` + fields.map(([k,v]) => `${k}=${v}`).join('\n');
+  let valid = false;
+  try {
+    const bytes = Uint8Array.from(atob(signature.replace(/-/g,'+').replace(/_/g,'/').padEnd(88,'=')), c => c.charCodeAt(0));
+    const key = await crypto.subtle.importKey('raw', Uint8Array.from(publicKey.match(/../g), x => parseInt(x,16)), {name:'Ed25519'}, false, ['verify']);
+    valid = await crypto.subtle.verify('Ed25519', key, bytes, new TextEncoder().encode(message));
+  } catch { /* malformed signature fails closed */ }
+  if (!valid) throw new ApiError(401, 'INVALID_AUTH');
+  let user;
+  try { user = JSON.parse(data.get('user')); } catch { throw new ApiError(401, 'INVALID_AUTH'); }
+  if (!Number.isSafeInteger(user?.id) || user.id <= 0 || user.is_bot) throw new ApiError(401, 'INVALID_AUTH');
+  const source = data.get('start_param') || 'direct';
+  return {id:String(user.id), source:/^[A-Za-z0-9_-]{1,64}$/.test(source)?source:'direct', expiresAt:Number(stamp)+3600};
+}
+function verifyTelegram(raw, botId, now) {
+  // Key selection is fixed server-side; clients cannot substitute a test key or bot ID.
+  return verifySignedData(raw, botId, TELEGRAM_PUBLIC_KEY, now);
+}
+
+  const BOT_ID='9065261332';
+  const OWNER='774885402', KEY='cf_owner_promo_v1';
+  let verifiedUntil=0, promo=false, sourceSlot=0, selectedTeam=0, selectedPlayer=null, stats=null;
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const sdk=()=>window.Telegram?.WebApp;
+  const ownerHint=()=>String(sdk()?.initDataUnsafe?.user?.id||'')===OWNER;
+  const authorized=()=>Date.now()<verifiedUntil;
+  const busy=()=>!!(window.CF_LIVE_VIEW||typeof CF_LIVE_VIEW!=='undefined'&&CF_LIVE_VIEW||typeof CF_HERO_ACTIVE!=='undefined'&&CF_HERO_ACTIVE||document.getElementById('mmb'));
+  const errorText=e=>({NOT_CONFIGURED:'Счётчик ещё не подключён к серверу. Редактор составов доступен.',AUTH_EXPIRED:'Закрой игру и открой её заново из Telegram.',INVALID_AUTH:'Telegram не подтвердил вход. Открой игру через бота CyberFoot в обновлённом Telegram.',ADMIN_ONLY:'Этот раздел доступен только владельцу.',CRYPTO_UNSUPPORTED:'Обнови Telegram и систему: устройству нужна поддержка проверки подписи Ed25519.',ORIGIN_DENIED:'Адрес игры ещё не разрешён в настройках API.'}[e.message]||'Сервер счётчика недоступен. Редактор и обычные сохранения работают.');
+  async function api(path) {
+    const raw=document.querySelector('meta[name="cf-admin-api"]')?.content?.trim();
+    if(!raw)throw Error('NOT_CONFIGURED');
+    let base;try{base=new URL(raw)}catch{throw Error('NOT_CONFIGURED')}
+    if(base.protocol!=='https:'||base.username||base.password||base.search||base.hash||!['','/'].includes(base.pathname))throw Error('NOT_CONFIGURED');
+    const initData=sdk()?.initData;if(!initData)throw Error('INVALID_AUTH');
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
+    try {
+      const response=await fetch(base.origin+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData}),signal:controller.signal,cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer'});
+      let data;try{data=await response.json()}catch{throw Error('SERVICE_UNAVAILABLE')}
+      if(!response.ok)throw Error(data.error||'SERVICE_UNAVAILABLE');
+      return data;
+    } finally {clearTimeout(timer)}
+  }
+  async function session() { return api('/api/session'); }
+  async function requireOwner(){
+    if(authorized())return;
+    verifiedUntil=0;
+    if(!window.crypto?.subtle)throw Error('CRYPTO_UNSUPPORTED');
+    const identity=await verifyTelegram(sdk()?.initData,BOT_ID);
+    if(identity.id!==OWNER)throw Error('ADMIN_ONLY');
+    verifiedUntil=Math.min(identity.expiresAt*1000,Date.now()+240000);mount();
+  }
+  function note(message){const n=document.getElementById('cf-admin-notice');if(n)n.textContent=message;else if(typeof toast==='function')toast(message)}
+  function mount(){
+    let strip=document.getElementById('cf-admin-strip');
+    if(!ownerHint()&&!authorized()){strip?.remove();return}
+    if(!strip){strip=document.createElement('div');strip.id='cf-admin-strip';document.body.insertBefore(strip,document.body.firstChild)}
+    strip.innerHTML='<button class="s" data-owner-open>Админ</button>'+(promo?'<span>Промокарьера · копия слота '+sourceSlot+'</span><button class="s" data-owner-exit>Вернуться</button>':'<span>Только владелец</span>');
+    strip.querySelector('[data-owner-open]').onclick=()=>open();
+    const exit=strip.querySelector('[data-owner-exit]');if(exit)exit.onclick=()=>exitPromo();
+  }
+  function panel(){
+    document.getElementById('cf-admin-modal')?.remove();
+    const modal=document.createElement('div');modal.className='md';modal.id='cf-admin-modal';
+    modal.innerHTML='<section class="c cf-admin-panel" role="dialog" aria-modal="true" aria-label="Админка CyberFoot"><div class="row"><h2>Админка</h2><button class="s" data-close aria-label="Закрыть">×</button></div><div id="cf-admin-body"></div><p id="cf-admin-notice" role="status"></p></section>';
+    modal.querySelector('[data-close]').onclick=()=>modal.remove();modal.onclick=e=>{if(e.target===modal)modal.remove()};document.body.append(modal);return modal.querySelector('#cf-admin-body');
+  }
+  async function open(){
+    if(!ownerHint()&&!authorized())return;
+    if(busy()){note('Закончи текущий игровой момент перед редактированием.');return}
+    const body=panel();body.textContent='Проверяем вход через Telegram…';
+    try {await requireOwner();if(!document.contains(body))return;draw();await refreshStats()}
+    catch(e){if(document.contains(body)){body.innerHTML='<p>'+esc(errorText(e))+'</p><button class="s" id="cf-admin-retry">Повторить</button>';body.querySelector('button').onclick=()=>open()}}
+  }
+  async function refreshStats(){
+    try{await requireOwner();const data=await api('/api/admin/stats');stats=data.stats;paintStats()}
+    catch(e){stats=null;paintStats();note(errorText(e))}
+  }
+  function paintStats(){const box=document.getElementById('cf-admin-stats');if(!box)return;
+    box.innerHTML='<div class="cf-admin-metrics">'+[['Всего игроков','total'],['Новых сегодня','newToday'],['Играли сегодня','activeToday'],['За 5 минут','online']].map(([label,key])=>'<div><b>'+esc(stats&&Number.isFinite(Number(stats[key]))?Number(stats[key]).toLocaleString('ru-RU'):'—')+'</b><small>'+label+'</small></div>').join('')+'</div><p class="mu">'+(stats?'Уникальные Telegram-аккаунты. Твой аккаунт исключён. Сегодня — по Москве. Обновлено '+new Date(stats.asOf*1000).toLocaleTimeString('ru-RU')+'.':'Статистика ещё не загружена.')+'</p><p class="mu">'+(stats?.trackingSince?'Учёт с '+new Date(stats.trackingSince*1000).toLocaleDateString('ru-RU')+'.':'Учёт начинается после подключения сервера; прежние открытия восстановить нельзя.')+'</p>';
+  }
+  function promoRecord(){try{const p=JSON.parse(unpackSave(localStorage.getItem(KEY)||''));return p?.owner===OWNER&&validSave(p.g)&&[1,2].includes(p.slot)?p:null}catch{return null}}
+  function draw(){const body=document.getElementById('cf-admin-body');if(!body||!authorized())return;
+    body.innerHTML='<h3>Игроки</h3><div id="cf-admin-stats"></div><button class="s" id="cf-admin-refresh">Обновить счётчик</button><hr><h3>Составы для съёмки</h3><p class="mu">Отдельная промокопия: составы и результаты двух обычных карьер сохраняются.</p><div class="cf-admin-actions">'+[1,2].map(n=>'<button class="s" data-copy="'+n+'" '+(validSave(readSlot(n))?'':'disabled')+'>Копия карьеры '+n+'</button>').join('')+(promoRecord()?'<button class="s" id="cf-admin-resume">Продолжить промокарьеру</button>':'')+'</div>'+(promo?'<div class="cf-admin-tag">Сейчас редактируется промокопия слота '+sourceSlot+'</div><label>Клуб<select id="cf-admin-team"></select></label><label>Поиск игрока<input id="cf-admin-search" placeholder="Имя или фамилия" maxlength="60"></label><div id="cf-admin-roster"></div><div id="cf-admin-editor"></div><div class="cf-admin-actions"><button class="s" id="cf-admin-fit">Восстановить команду</button><button class="s" id="cf-admin-xi">Автосостав</button><button class="s" id="cf-admin-exit">Вернуться в карьеру</button></div>':'<p class="mu">Сначала создай обычную карьеру и закончи драфт. Затем выбери, с какого слота снять копию.</p>');
+    paintStats();document.getElementById('cf-admin-refresh').onclick=refreshStats;
+    body.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copySlot(Number(b.dataset.copy)));
+    const resume=document.getElementById('cf-admin-resume');if(resume)resume.onclick=()=>resumePromo();
+    if(!promo)return;
+    const teams=allT(),select=document.getElementById('cf-admin-team');selectedTeam=Math.max(0,Math.min(selectedTeam,teams.length-1));
+    select.innerHTML=teams.map((t,i)=>'<option value="'+i+'">'+esc(t.name+' · '+lgOf(t))+'</option>').join('');select.value=String(selectedTeam);
+    select.onchange=()=>{selectedTeam=Number(select.value);selectedPlayer=null;paintRoster()};
+    document.getElementById('cf-admin-search').oninput=paintRoster;
+    document.getElementById('cf-admin-fit').onclick=()=>mutate(()=>{for(const p of teams[selectedTeam].squad){p.ft=0;p.inj=0;p.f=0}repairLineup()});
+    document.getElementById('cf-admin-xi').onclick=()=>mutate(()=>{setF(G.form||'4-3-3')});
+    document.getElementById('cf-admin-exit').onclick=()=>exitPromo();paintRoster();
+  }
+  function paintRoster(){if(!promo||!G)return;const team=allT()[selectedTeam],box=document.getElementById('cf-admin-roster');if(!box)return;
+    const query=(document.getElementById('cf-admin-search')?.value||'').toLocaleLowerCase('ru-RU');
+    box.innerHTML=team.squad.filter(p=>p.n.toLocaleLowerCase('ru-RU').includes(query)).map(p=>'<button class="s cf-admin-player" data-player="'+p.id+'"><span>'+esc(p.pos)+' · '+esc(p.n)+'</span><b>'+p.r+'</b></button>').join('')||'<p class="mu">Игроки не найдены</p>';
+    box.querySelectorAll('[data-player]').forEach(b=>b.onclick=()=>{selectedPlayer=Number(b.dataset.player);paintEditor()});
+    paintEditor();
+  }
+  function field(key,label,value,min,max){return '<label>'+label+'<input id="cf-edit-'+key+'" type="number" min="'+min+'" max="'+max+'" step="1" value="'+value+'" required></label>'}
+  function paintEditor(){const box=document.getElementById('cf-admin-editor');if(!box)return;const team=allT()[selectedTeam],p=team.squad.find(p=>p.id===selectedPlayer);if(!p){box.innerHTML='';return}
+    box.innerHTML='<form id="cf-admin-form"><h3>'+esc(p.n)+'</h3><label>Имя<input id="cf-edit-name" maxlength="60" value="'+esc(p.n)+'" required></label><label>Позиция<select id="cf-edit-pos">'+['GK','DEF','MID','FWD'].map(pos=>'<option '+(pos===p.pos?'selected':'')+'>'+pos+'</option>').join('')+'</select></label><div class="cf-admin-grid">'+field('r','Рейтинг',p.r,35,99)+field('age','Возраст',p.age,16,45)+field('pot','Потенциал (0 — нет)',p.pot||0,0,99)+field('f','Форма',p.f||0,-3,3)+field('ft','Усталость',p.ft||0,0,100)+field('inj','Травма, туров',p.inj||0,0,99)+field('gs','Золотые звёзды',p.gs||0,0,3)+field('bd','Золотые мячи',p.bd||0,0,2)+'</div><label><input id="cf-edit-rs" type="checkbox" '+(p.rs?'checked':'')+'> Красная звезда</label><details><summary>Шесть характеристик</summary><div class="cf-admin-grid">'+(p.pos==='GK'?SL.g:SL.o).map((label,i)=>field('stat'+i,label,p.st?.[i]??p.r,1,99)).join('')+'</div></details><p class="mu">Цена рассчитывается по общей формуле, максимум 250 млн €. Зарплата и контракт сохраняются.</p><button type="submit">Сохранить игрока</button></form><label>Перевести в клуб<select id="cf-admin-destination">'+allT().map((t,i)=>'<option value="'+i+'" '+(i===selectedTeam?'disabled':'')+'>'+esc(t.name+' · '+lgOf(t))+'</option>').join('')+'</select></label><button class="s" id="cf-admin-move">Перевести без оплаты · промокопия</button><div class="cf-admin-actions"><button class="s" id="cf-admin-penalty">Снять пенальти</button><button class="s" id="cf-admin-free-kick">Снять штрафной</button></div>';
+    document.getElementById('cf-admin-form').onsubmit=e=>{e.preventDefault();savePlayer()};
+    const dest=document.getElementById('cf-admin-destination');dest.value=String(allT().findIndex((_,i)=>i!==selectedTeam));
+    document.getElementById('cf-admin-move').onclick=()=>movePlayer(Number(dest.value));
+    document.getElementById('cf-admin-penalty').onclick=()=>shoot('pk');document.getElementById('cf-admin-free-kick').onclick=()=>shoot('fk');
+  }
+  function savePromo(){if(!promo||!G)return false;try{cfEnsureCareer();const data=packSave(JSON.stringify({owner:OWNER,slot:sourceSlot,g:G}));localStorage.setItem(KEY,data);if(localStorage.getItem(KEY)!==data||!promoRecord())throw Error('SAVE_FAILED');return true}catch{note('Промокопия не сохранилась: проверь свободную память. Обычные карьеры сохранены.');return false}}
+  function activate(record){promo=true;sourceSlot=record.slot;ACTIVE_SLOT=record.slot;G=record.g;TAB=0;selectedTeam=Math.max(0,G.t.findIndex(t=>t.user));selectedPlayer=null;cfClubIndex(true);render();draw();mount()}
+  async function copySlot(slot){try{await requireOwner();if(busy())return note('Закончи текущий матч.');if(promo&&!confirm('Заменить текущую промокопию? Обычные карьеры сохранятся.'))return;
+    if(!promo&&G&&!save())return;const g=readSlot(slot);if(!validSave(g)||g.dr)return note('Сначала создай карьеру и закончи драфт в этом слоте.');
+    const previous={promo,sourceSlot,G,ACTIVE_SLOT,TAB};activate({slot,g:JSON.parse(JSON.stringify(g))});if(!savePromo()){({promo,sourceSlot,G,ACTIVE_SLOT,TAB}=previous);render();draw();mount();return}note('Промокопия создана. Можно редактировать составы.');
+  }catch(e){note(errorText(e))}}
+  async function resumePromo(){try{await requireOwner();if(busy())return note('Закончи текущий матч.');if(!promo&&G&&!save())return;const record=promoRecord();if(!record)return note('Промокопия не найдена.');activate(record)}catch(e){note(errorText(e))}}
+  function exitPromo(toMenu=false){if(!promo)return;if(busy())return note('Сначала закончи текущий матч или мини-игру.');if(!savePromo())return;promo=false;G=readSlot(sourceSlot);ACTIVE_SLOT=sourceSlot;TAB=0;cfClubIndex(true);document.getElementById('cf-admin-modal')?.remove();if(toMenu){G=null;ACTIVE_SLOT=0;showSlots()}else render();mount()}
+  function repairLineup(){const u=me();G.xi=G.xi.filter(id=>u.squad.some(p=>p.id===id));if(!xiOk())setF(G.form||'4-3-3');for(const t of allT()){const xi=auto(t.squad,4,3,3);t.str=xi.length?Math.round(xi.reduce((s,p)=>s+p.r,0)/xi.length):35}cfClubIndex(true)}
+  async function mutate(change){try{await requireOwner();if(!promo||!G)return note('Сначала создай промокопию.');if(busy())return note('Закончи текущий матч.');const before=JSON.stringify(G);try{change();repairLineup();if(!savePromo())throw Error('SAVE_FAILED')}catch(e){G=JSON.parse(before);cfClubIndex(true);throw e}render();paintRoster();mount();note('Сохранено в промокопии.')}catch(e){note(e.message==='SAVE_FAILED'?'Изменения отменены: промокопия не сохранилась.':e.message.startsWith('INPUT:')?e.message.slice(6):errorText(e))}}
+  async function savePlayer(){const id=selectedPlayer,teamIndex=selectedTeam;const values={},get=key=>document.getElementById('cf-edit-'+key);
+    const name=get('name').value.trim(),pos=get('pos').value;
+    if(!name||name.length>60||/[<>"&`\\\x00-\x1f]/.test(name))return note('Имя: до 60 символов, без HTML и служебных знаков.');
+    for(const[key,min,max]of [['r',35,99],['age',16,45],['pot',0,99],['f',-3,3],['ft',0,100],['inj',0,99],['gs',0,3],['bd',0,2],...Array.from({length:6},(_,i)=>['stat'+i,1,99])]){const raw=get(key).value,n=Number(raw);if(raw===''||!Number.isInteger(n)||n<min||n>max)return note('Проверь числовые поля и допустимые границы.');values[key]=n}
+    const red=get('rs').checked;
+    await mutate(()=>{const t=allT()[teamIndex],p=t.squad.find(x=>x.id===id);if(!p)throw Error('INPUT:Игрок не найден.');if(!['GK','DEF','MID','FWD'].includes(pos))throw Error('INPUT:Неверная позиция.');if(p.pos==='GK'&&pos!=='GK'&&t.squad.filter(x=>x.pos==='GK').length<=1)throw Error('INPUT:В команде должен остаться вратарь.');Object.assign(p,{n:name,pos,r:values.r,age:values.age,pot:values.pot,f:values.f,ft:values.ft,inj:values.inj,gs:values.gs,bd:values.bd,rs:red?1:0,st:Array.from({length:6},(_,i)=>values['stat'+i])});});
+  }
+  async function movePlayer(destination){const id=selectedPlayer,from=selectedTeam;await mutate(()=>{const teams=allT(),src=teams[from],dst=teams[destination],p=src.squad.find(x=>x.id===id);if(!p||!dst||dst===src)throw Error('INPUT:Выбери другой клуб.');if(src.squad.length<=11)throw Error('INPUT:В исходном клубе должны остаться 11 игроков.');if(dst.squad.length>=24)throw Error('INPUT:В принимающем клубе уже 24 игрока.');if(p.pos==='GK'&&src.squad.filter(x=>x.pos==='GK').length<=1)throw Error('INPUT:Нельзя забрать последнего вратаря.');src.squad=src.squad.filter(x=>x!==p);dst.squad.push(p);if(dst.user)cfContract(p,dst);selectedPlayer=null;});}
+  async function shoot(mode){try{await requireOwner();if(!promo||busy())return;const p=allT()[selectedTeam]?.squad.find(x=>x.id===selectedPlayer);if(!p)return;const opponent=G.t.find(t=>!t.user),gk=opponent?.squad.find(x=>x.pos==='GK');document.getElementById('cf-admin-modal')?.remove();cfHeroScene(mode,{gkRating:gk?.r||75,distance:23},p.n,p.r,()=>{});}catch(e){note(errorText(e))}}
+  // Guard all normal save entry points while a separate promo world is active.
+  const originalMenu=slotMenu,originalSelect=selectSlot,originalDelete=deleteSlot;
+  slotMenu=function(){if(promo)return exitPromo(true);return originalMenu.apply(this,arguments)};
+  selectSlot=function(n){if(promo){exitPromo(true);if(promo)return}return originalSelect(n)};
+  deleteSlot=function(n){if(promo)return exitPromo(true);return originalDelete(n)};
+  window.CFAdmin=Object.freeze({isPromo:()=>promo,savePromo,exit:()=>exitPromo(true),open});
+  const style=document.createElement('style');style.textContent='#cf-admin-strip{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;background:#192538;color:#d8e2ee;font-size:12px}#cf-admin-strip span{flex:1}#cf-admin-modal{z-index:180}.cf-admin-panel{width:min(96vw,620px);max-height:90dvh;overflow:auto;overscroll-behavior:contain}.cf-admin-panel>.row{justify-content:space-between;align-items:center}.cf-admin-panel label{display:block;font-size:13px;margin:10px 0}.cf-admin-panel input:not([type=checkbox]),.cf-admin-panel select{display:block;width:100%;padding:10px;margin-top:5px;background:var(--s2);color:var(--fg);border:1px solid var(--ln);border-radius:10px;font:inherit}.cf-admin-grid,.cf-admin-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.cf-admin-metrics>div{padding:12px;border-radius:12px;background:var(--s2)}.cf-admin-metrics b{display:block;font-size:25px}.cf-admin-metrics small{color:var(--mu)}.cf-admin-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.cf-admin-player{width:100%;display:flex;justify-content:space-between;gap:8px;text-align:left;margin:4px 0}.cf-admin-tag{padding:10px;border:1px solid var(--gold);border-radius:10px;margin:10px 0}#cf-admin-roster{max-height:230px;overflow:auto}#cf-admin-notice{color:var(--gold)}';document.head.append(style);
+  mount();
+  // Shared telemetry counts authenticated accounts, not careers, devices or reloads.
+  session().catch(()=>{});
+  setInterval(()=>{if(document.visibilityState==='visible')session().catch(()=>{})},60000);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')session().catch(()=>{})});
+})();
+
+</script>
+</body></html>
