@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru"><head><script src="https://telegram.org/js/telegram-web-app.js"></script><meta charset="utf-8"><meta name="cf-admin-api" content=""><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>CyberFoot Web</title>
+<html lang="ru"><head><script src="https://telegram.org/js/telegram-web-app.js"></script><meta charset="utf-8"><meta name="cf-admin-api" content="https://cyberfoot-counter.tisini49.workers.dev"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>CyberFoot Web</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Oswald:wght@500;600;700&family=Unbounded:wght@600;800&display=swap"><style>
 /* Layout: matchday programme under floodlights — night-navy ground, chalk type, floodlight gold for actions, shield monograms for clubs. One committed dark look. */
 :root{
@@ -255,8 +255,18 @@ const R=(a,b)=>Math.floor(Math.random()*(b-a+1))+a,C=(v,a=35,b=95)=>Math.max(a,M
 const SN="Ковач,Росси,Мюллер,Гарсия,Сильва,Новак,Петров,Лопес,Дюбуа,Хансен,Ортега,Байер,Конте,Фернандес,Смит,Иванов,Морено,Леви,Бруно,Окафор,Диас,Томас,Янсен,Мартин,Соколов,Мендес,Абэ,Кларк,Вега,Рамос".split(",").concat('Аранда,Бельтран,Вагнер,Гомес,Давидов,Эриксен,Жуков,Зайцев,Иглесиас,Кастро,Лукас,Мартинес,Навас,Оливер,Перес,Рейес,Сантос,Тейлор,Усманов,Фабрис,Хименес,Чавес,Шмидт,Эчеверри,Юнкер,Яшин,Алонсо,Бернар,Вальдес,Грёнен,Дьюк,Эстевес,Жирар,Зубков,Ильин,Карвалью,Лимов,Моралес,Нильсен,Орлов,Пирс,Родригес,Соареш,Тавареш,Улитин,Фишер,Хофман,Цвейг,Шевцов,Эдвардс,Юсупов,Ярмоленко,Бенитес,Волков,Гавриш,Донадони,Ерохин,Жаров,Зорин,Исаков,Крылов,Лоренцо,Макаров,Никитин,Охотников,Павлов,Романов,Сидоров,Тихонов,Уильямс,Фролов,Хаджи,Чернов,Шубин,Эрнандес,Юдин,Янко,Абрамов,Белов,Власов,Гусев,Демин,Ермаков,Железняк,Зиньков,Игнатьев,Комаров,Ларин,Никола,Осипов,Петерс,Рудин,Симеоне,Титов,Уэст,Федоров,Хавьер,Цой,Шилов,Эмери,Юрген,Яковлев'.split(',')),IN="АБВГДЕЖЗИКЛМНОПРСТУФХЧШЭЮЯ";
 const SQ=[["GK",2],["DEF",6],["MID",6],["FWD",4]].flatMap(([p,k])=>Array(k).fill(p)),T={GK:2,DEF:6,MID:6,FWD:4};
 let uid=Date.now(),G=null,TAB=0,LG="Англия";
-const mk=(b,pos,age)=>{const a=age||R(19,34),s=a<=21&&Math.random()<.1;return{id:uid++,n:IN[R(0,IN.length-1)]+'. '+SN[R(0,SN.length-1)],pos,r:C(b+R(-7,6)+(s?8:0)),age:a,pot:s?R(90,97):0,g:0,rs:s?1:0}};
-const youth=()=>Array.from({length:6},()=>{const s=Math.random()<.12,r=s?R(60,70):R(42,58);return{...mk(r,SQ[R(0,17)],R(16,18)),r,pot:s?R(90,97):Math.min(92,r+R(12,32)),rs:s?1:0}});
+const mk=(b,pos,age)=>{
+  const a=age||R(19,34), prospect=a<=21&&Math.random()<.035;
+  const exceptional=prospect&&b>=75&&Math.random()<.18;
+  const r=C(b+R(-6,5)+(prospect?3:0),35,89);
+  const ceiling=exceptional?94:prospect?91:88;
+  const pot=a<=23?Math.max(r,Math.min(ceiling,r+R(prospect?8:3,prospect?14:9))):0;
+  return {id:uid++,n:IN[R(0,IN.length-1)]+'. '+SN[R(0,SN.length-1)],pos,r,age:a,pot,g:0,rs:prospect?1:0};
+};
+const youth=()=>Array.from({length:6},()=>{
+  const prospect=Math.random()<.04,r=prospect?R(63,69):R(43,59);
+  return {...mk(r,SQ[R(0,17)],R(16,18)),r,pot:Math.min(prospect?91:84,r+R(prospect?15:9,prospect?25:21)),rs:prospect?1:0};
+});
 const me=()=>G.t.find(t=>t.user),xp=()=>G.xi.map(id=>me().squad.find(p=>p.id==id)).filter(Boolean);
 const xiOk=()=>xp().length==11&&xp().filter(p=>p.pos=="GK").length==1;
 const formOf=()=>{const x=xp(),c=p=>x.filter(y=>y.pos==p).length;return c("DEF")+"-"+c("MID")+"-"+c("FWD")};
@@ -368,8 +378,8 @@ const P=t=>t.squad?pw(lu(t)):{a:t.str,d:t.str};function scorer(t){if(!t.squad)re
 function sched(n){let ids=[...Array(n).keys()],r=[];for(let i=0;i<n-1;i++){let m=[];for(let j=0;j<n/2;j++){const a=ids[j],b=ids[n-1-j];m.push(i%2?[b,a]:[a,b])}r.push(m);ids.splice(1,0,ids.pop())}return r.concat(r.map(x=>x.map(([a,b])=>[b,a])))}
 const upd=(t,f,a)=>{t.p++;t.gf+=f;t.ga+=a;if(f>a){t.w++;t.pts+=3}else if(f==a){t.d++;t.pts++}else t.l++};
 function sim0(h,a,u){cfPrepareMatchLoad();if(u)return{gh:0,ga:0,ev:[],pp:50,sh:0,sa:0,simV:1};const playedH=cfPlayedIds(h),playedA=cfPlayedIds(a);const ph=P(h),pa=P(a),k=G.sty||0,sc=t=>t.user?(1+.25*k)*1.1:1,cc=t=>t.user?(1+.2*k)*.92:1,gh=po(C(1.7*Math.exp((ph.a-pa.d)/24)*sc(h)*cc(a),.2,5)),ga=po(C(1.4*Math.exp((pa.a-ph.d)/24)*sc(a)*cc(h),.2,5));let ev=[];for(let i=0;i<gh;i++)ev.push({m:R(1,90),t:'h',who:scorer(h).n});for(let i=0;i<ga;i++)ev.push({m:R(1,90),t:'a',who:scorer(a).n});ev.sort((x,y)=>x.m-y.m);const result={gh,ga,ev,pp:C(Math.round(50+(ph.a+ph.d-pa.a-pa.d)/2.2),30,70),sh:gh+R(3,8)+(ph.a>pa.d?2:0),sa:ga+R(2,7)+(pa.a>ph.d?2:0)};cfApplyMatchLoad(h,playedH);cfApplyMatchLoad(a,playedA);return result}
-function play(){let rep=null;G.res=[];G.lv=[];G.bud+=1;G.fx[G.round].forEach(([i,j])=>{const h=G.t[i],a=G.t[j],u=h.user||a.user,x=sim(h,a,u);upd(h,x.gh,x.ga);upd(a,x.ga,x.gh);G.res.push(h.name+' '+x.gh+':'+x.ga+' '+a.name);G.lv.push({h:h.name,a:a.name,ev:x.ev});if(u)rep={h:h.name,a:a.name,...x}});(G.hist=G.hist||[])[G.round]=G.res;G.round++;G.rep=rep;cfPayWages();after(rep);lnx(G.t,G.lv,G.lg,G);oth(G.round-1);if(G.round%6==0)G.mk=market();adv()}
-function prog(t){t.squad.forEach(p=>{p.age++;let d=p.age<=22?R(1,6):p.age<=28?R(-1,2):p.age<=31?R(-2,1):R(-4,0);if(p.pot&&d>0)d=Math.min(d,Math.max(0,p.pot-p.r));p.r=C(p.r+d);p.g=0;p.cg=0});const rt=p=>p.age>=38||(p.age>=33&&Math.random()<(p.age-32)*.16);t.squad=t.squad.filter(p=>{if(!rt(p))return true;if(p.r>=72||t.user){G.leg=[{n:p.n,r:p.r,cl:t.name,age:p.age,gs:p.gs||0},...(G.leg||[])].slice(0,30);if(p.r>=78||t.user)nw('👴 '+p.n+' ('+t.name+') завершил карьеру',lgOf(t))}return false});const n=t.user?15:18;while(t.squad.length<n){const c=k=>t.squad.filter(p=>p.pos==k).length,k=Object.keys(T).sort((a,b)=>(T[b]-c(b))-(T[a]-c(a)))[0];t.squad.push(mk(t.str-8,k,R(17,20)))}}
+function play(){let rep=null;G.res=[];G.lv=[];G.fx[G.round].forEach(([i,j])=>{const h=G.t[i],a=G.t[j],u=h.user||a.user,x=sim(h,a,u);upd(h,x.gh,x.ga);upd(a,x.ga,x.gh);G.res.push(h.name+' '+x.gh+':'+x.ga+' '+a.name);G.lv.push({h:h.name,a:a.name,ev:x.ev});if(u)rep={h:h.name,a:a.name,...x}});(G.hist=G.hist||[])[G.round]=G.res;G.round++;G.rep=rep;cfPayWages();after(rep);lnx(G.t,G.lv,G.lg,G);oth(G.round-1);if(G.round%6==0)G.mk=market();adv()}
+function prog(t){t.squad.forEach(p=>cfDevelopPlayer(p,t));const rt=p=>p.age>=38||(p.age>=33&&Math.random()<(p.age-32)*.16);t.squad=t.squad.filter(p=>{if(!rt(p))return true;if(p.r>=72||t.user){G.leg=[{n:p.n,r:p.r,cl:t.name,age:p.age,gs:p.gs||0},...(G.leg||[])].slice(0,30);if(p.r>=78||t.user)nw('👴 '+p.n+' ('+t.name+') завершил карьеру',lgOf(t))}return false});const n=t.user?15:18;while(t.squad.length<n){const c=k=>t.squad.filter(p=>p.pos==k).length,k=Object.keys(T).sort((a,b)=>(T[b]-c(b))-(T[a]-c(a)))[0];t.squad.push(mk(t.str-5,k,R(18,24)))}}
 const tm=n=>allT().find(t=>t.name==n)||G.pool.find(t=>t.name==n),cat=s=>Math.round(G.fx.length*(s+1)/14),CN={CL:'Лига чемпионов',EL:'Лига Европы'},RN=['1/8 финала','1/4 финала','1/2 финала','Финал'],alive=()=>(G.cup.ph?G.cup.al:G.cup.lg).includes(me().name),cs=()=>G.cup.ph?8+G.cup.rd:G.cup.ld,due=()=>cs()<12&&G.round>=cat(cs()),cupOpp=()=>{const c=G.cup;if(c.ph)return tm(c.al[c.al.indexOf(me().name)^1]);const i=c.lg.indexOf(me().name),m=c.fx[c.ld].find(([a,b])=>a==i||b==i);return tm(c.lg[m[0]==i?m[1]:m[0]])},cupLbl=()=>CN[G.cup.k]+', '+(G.cup.ph?RN[G.cup.rd]:'тур '+(G.cup.ld+1)+' из 8');
 const cts=(c=G.cup)=>Object.entries(c.tb).map(([n,t])=>({name:n,...t})).sort((a,b)=>b.pts-a.pts||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf),cgc=(x,h,a,c)=>x.ev.forEach(e=>{const T2=e.t=='h'?h:a,s2=T2.squad,q=s2&&s2.find(p=>p.n==e.who);if(q)q.cg=(q.cg||0)+1;if(c){const k=e.who+'|'+T2.name;c.sc=c.sc||{};c.sc[k]=(c.sc[k]||0)+1}}),
 zf=i=>{const n=G.t.length,nr=n<=12?2:3,dv=G.dv||0,last=!LD[G.bl]||dv>=LD[G.bl].length;return dv?(i<3?1:(!last&&i>=n-nr?3:0)):(i<4?1:i<6?2:i>=n-nr?3:0)},
@@ -387,13 +397,21 @@ const sell=id=>cfSellPlayer(id);
 function vTr(){const u=me(),row=(p,b)=>`<div class='p' style='cursor:default'><span class='b'>${p.pos}</span><span style='flex:1'>${p.n}<span class='mu'> · ${p.age} л. · ${cfMoneyM(price(p))}</span></span><b>${p.r}</b>${b}</div>`;return`<div class='c'><b>Бюджет: ${cfMoneyM(G.bud)}</b><p class='mu'>+1 млн за каждый тур и бонус за место в конце сезона. Рынок обновляется каждые 6 туров. Продажа — 80% цены.</p></div><h2>Рынок</h2><div class='c' style='padding:0'>${G.mk.map(p=>row(p,`<button ${G.bud>=price(p)&&u.squad.length<24?'':'disabled'} onclick='buy(${p.id})'>Купить</button>`)).join('')||'<p class=mu>Пусто</p>'}</div><h2>Продать</h2><div class='c' style='padding:0'>${[...u.squad].sort((a,b)=>b.r-a.r).map(p=>row(p,`<button class='s' ${u.squad.length>15?'':'disabled'} onclick='sell(${p.id})'>Продать</button>`)).join('')}</div>`}
 function setF(f){const[d,m,w]=f.split("-").map(Number);G.form=f;G.xi=auto(me().squad,d,m,w).map(p=>p.id)}
 const fm=f=>{setF(f);save();render()};
-function newGame(lg,ci,dv=0,dr=0){if(!ACTIVE_SLOT)return showSlots();const key=(b,d)=>d?b+' '+(d+1):b,mkT=(b,d,u)=>LL(b,d).map((s,i)=>{const t=tn(s,u&&i==ci?1:0);t.dv=d;t.bl=b;return t}),t=mkT(lg,dv,1);G={v:2,lg:key(lg,dv),bl:lg,dv,t,fx:sched(t.length),round:0,season:1,slots:3,rep:null,xi:[],form:'4-3-3',bud:40,sty:0,res:[],mk:market(),pool:Object.keys(L).filter(k=>k!=lg).flatMap(k=>L[k].map(s=>{const[name,v]=s.split(':');return{name,str:+v,lg:k}})),oth:{}};const rk=[...t].sort((a,b)=>b.str-a.str).findIndex(x=>x.user);G.q=dv?null:rk<4?'CL':rk<6?'EL':null;Object.keys(L).forEach(b=>{for(let d=0;d<=LD[b].length;d++){if(b==lg&&d==dv)continue;const tt=mkT(b,d,0);G.oth[key(b,d)]={t:tt,fx:sched(tt.length)}}});setF('4-3-3');G.youth=youth();mkCup();adv();setExp();TAB=0;if(dr)drInit();save();render()}
-function nextSeason(){const ps=sorted().findIndex(t=>t.user)+1,q0=G.dv?null:(ps<=4?'CL':ps<=6?'EL':null),tr=G.tr=G.tr||{d:80,f:70},b=topSc()[0];ehRec();(G.hs=G.hs||[]).push({s:G.season,pos:ps,ch:sorted()[0].name,k:G.cup.k,cu:(G.cup.al||[''])[0],gb:b.n+' ('+b.g+')'});if(b.g>0)b.p.gs=(b.p.gs||0)+1;nw('🏆 Чемпион: '+sorted()[0].name);if(b.g>0)nw('⭐ Золотая звезда: '+b.n+' ('+b.t+'), '+b.g+' г.');tr.d=C(Math.max(tr.d,30)+(ps<=(G.exp||3)?15:ps<=(G.exp||3)+3?3:-6),0,100);if(tr.d<=0)G.fired=1;coach(ps);finOth();const pm=promoCalc();cfSeasonEndContracts();othEnd();G.t.forEach(t=>{prog(t);t.p=t.w=t.d=t.l=t.gf=t.ga=t.pts=0});promoApply(pm);const u=me();G.xi=G.xi.filter(id=>u.squad.some(p=>p.id==id));G.bud=Math.round((G.bud+C(45-ps*4,5,40))*10)/10;G.q=q0;G.season++;G.round=0;G.rep=null;G.res=[];G.hist=[];G.slots=3;G.youth=youth();G.mk=market();cfClubIndex(true);mkCup();adv();setExp();offers(ps);if(!xiOk())setF(G.form);save();render()}
+function newGame(lg,ci,dv=0,dr=0,customName=''){
+  if(!ACTIVE_SLOT)return showSlots();
+  if(customName){customName=cfDreamName(customName);if(!customName)return;}
+  if(!LL(lg,dv)?.[ci])return;
+  const key=(b,d)=>d?b+' '+(d+1):b,mkT=(b,d,u)=>LL(b,d).map((s,i)=>{const t=tn(s,u&&i==ci?1:0);t.dv=d;t.bl=b;return t}),t=mkT(lg,dv,1);
+  let replaced=null;
+  if(customName){replaced={name:t[ci].name,squad:t[ci].squad};t[ci].name=customName;t[ci].squad=[];}
+  G={v:2,lg:key(lg,dv),bl:lg,dv,t,fx:sched(t.length),round:0,season:1,slots:3,rep:null,xi:[],form:'4-3-3',bud:40,sty:0,res:[],mk:market(),pool:Object.keys(L).filter(k=>k!=lg).flatMap(k=>L[k].map(s=>{const[name,v]=s.split(':');return{name,str:+v,lg:k}})),oth:{}};const rk=[...t].sort((a,b)=>b.str-a.str).findIndex(x=>x.user);G.q=dv?null:rk<4?'CL':rk<6?'EL':null;Object.keys(L).forEach(b=>{for(let d=0;d<=LD[b].length;d++){if(b==lg&&d==dv)continue;const tt=mkT(b,d,0);G.oth[key(b,d)]={t:tt,fx:sched(tt.length)}}});setF('4-3-3');G.youth=youth();mkCup();adv();setExp();TAB=0;if(replaced){G.customClub=customName;G.dr={i:0,o:[],reserve:replaced};}else if(dr)drInit();save();render()}
+function nextSeason(){if(!G||G.dr||G.round<G.fx.length)return;cfCloseOtherLeagues();const ps=sorted().findIndex(t=>t.user)+1,q0=G.dv?null:(ps<=4?'CL':ps<=6?'EL':null),tr=G.tr=G.tr||{d:80,f:70},b=topSc()[0];ehRec();(G.hs=G.hs||[]).push({s:G.season,pos:ps,ch:sorted()[0].name,k:G.cup.k,cu:(G.cup.al||[''])[0],gb:b?b.n+' ('+b.g+')':'—'});if(b&&b.g>0)b.p.gs=(b.p.gs||0)+1;nw('🏆 Чемпион: '+sorted()[0].name);if(b&&b.g>0)nw('⭐ Золотая звезда: '+b.n+' ('+b.t+'), '+b.g+' г.');tr.d=C(Math.max(tr.d,30)+(ps<=(G.exp||3)?15:ps<=(G.exp||3)+3?3:-6),0,100);if(tr.d<=0)G.fired=1;coach(ps);const prize=cfSeasonFunds(ps);const pm=promoCalc();cfSeasonEndContracts();othEnd();G.t.forEach(t=>{prog(t);t.p=t.w=t.d=t.l=t.gf=t.ga=t.pts=0});promoApply(pm);const u=me();G.xi=G.xi.filter(id=>u.squad.some(p=>p.id==id));G.bud=cfRoundMoney(G.bud+prize);cfRecordClubCash(cfLedgerEntry('prize',prize));
+  nw('💶 Бюджет на следующий сезон: +'+cfMoneyM(prize));cfAdvanceAgents();G.q=q0;G.season++;G.round=0;G.rep=null;G.res=[];G.hist=[];G.slots=3;G.youth=youth();G.mk=market();cfClubIndex(true);mkCup();adv();setExp();offers(ps);if(!xiOk())setF(G.form);save();render()}
 const doRound=()=>{G.lv=[];G.pc={};const f=G.fx[G.round];f.forEach(([i,j])=>{const h=G.t[i],a=G.t[j],us=h.user||a.user;G.pc[h.name+'|'+a.name]=sim0(h,a,us);if(!us)G.lv.push({h:h.name,a:a.name,ev:G.pc[h.name+'|'+a.name].ev})});const m=f.find(([i,j])=>G.t[i].user||G.t[j].user);liveIA(G.t[m[0]],G.t[m[1]],'',()=>{play();G.pc=null;save();render()})};
 const tg=id=>{const i=G.xi.indexOf(id);if(i>=0)G.xi.splice(i,1);else if(G.xi.length<11&&!(me().squad.find(p=>p.id==id).inj>0))G.xi.push(id);save();render()};
 const sign=id=>{const i=G.youth.findIndex(p=>p.id==id);if(i<0||!G.slots)return;me().squad.push(G.youth.splice(i,1)[0]);G.slots--;toast('🌱 Игрок из молодёжки в заявке!');save();render()};
 const sorted=()=>[...G.t].sort((a,b)=>b.pts-a.pts||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf);
-function start(){if(!ACTIVE_SLOT)return showSlots();const sv0=load(),sv=sv0&&sv0.cup&&sv0.oth&&sv0.v==2?sv0:null,dr=MODE=='dr';$("app").innerHTML=`<section class="hero-s"><div class="eyebrow">Футбольный менеджер · сезон 2026/27</div><h1>CyberFoot</h1><p class="lead">Ты главный тренер. Реальные составы одиннадцати чемпионатов, вылет и повышение, Лига чемпионов с общим этапом.</p>${sv?`<button class="cta" onclick="G=load();TAB=0;render()">Продолжить · ${sv.t.find(x=>x.user).name}, сезон ${sv.season}</button>`:""}</section><div class="seg big">${[['car','Карьера'],['dr','Драфт']].map(([k,n])=>`<button class="${MODE==k?'':'s'}" onclick="MODE='${k}';start()">${n}</button>`).join('')}</div><p class="mu note">${dr?'Выбираешь клуб, а его состав собираешь сам: 18 пиков, в каждом три игрока со всего мира. Берёшь одного.':'Классическая карьера: реальный состав клуба, трансферы, академия и ожидания руководства.'}</p><h2>Лига</h2><div class="chips">${Object.keys(L).map(k=>`<button class="${k==LG?"":"s"}" onclick="LG='${k}';DV=0;start()">${k}</button>`).join("")}</div>${LD[LG].length?`<div class="chips">${[0,...LD[LG].map((_,i)=>i+1)].map(d=>`<button class="${d==DV?'':'s'}" onclick="DV=${d};start()">${d+1}-й дивизион</button>`).join('')}</div>`:''}<h2>Клуб</h2><div class="clubs">${LL(LG,DV).map((s,i)=>{const[n,v]=s.split(":");return`<button class="club" onclick="newGame('${LG}',${i},${DV},${dr?1:0})">${crest(n,'lg')}<span class="club-n">${n}<small>${dr?'Собрать состав':'Сила '+v}</small></span><span class="club-s">${v}</span></button>`}).join("")}</div>`}
+function start(){if(!ACTIVE_SLOT)return showSlots();const sv0=load(),sv=sv0&&sv0.cup&&sv0.oth&&sv0.v==2?sv0:null,dr=MODE=='dr',dream=MODE=='dream';$("app").innerHTML=`<section class="hero-s"><div class="eyebrow">Футбольный менеджер · сезон 2026/27</div><h1>CyberFoot</h1><p class="lead">Ты главный тренер. Реальные составы одиннадцати чемпионатов, вылет и повышение, Лига чемпионов с общим этапом.</p>${sv?`<button class="cta" onclick="G=load();TAB=0;render()">Продолжить · ${sv.t.find(x=>x.user).name}, сезон ${sv.season}</button>`:""}</section><div class="seg big">${[['car','Карьера'],['dr','Драфт'],['dream','Свой клуб']].map(([k,n])=>`<button class="${MODE==k?'':'s'}" onclick="MODE='${k}';start()">${n}</button>`).join('')}</div><p class="mu note">${dream?'Придумай название, выбери лигу и место клуба. Собери 18 игроков со всего мира.':dr?'Выбираешь клуб, а его состав собираешь сам: 18 пиков, в каждом три игрока со всего мира. Берёшь одного.':'Классическая карьера: реальный состав клуба, трансферы, академия и ожидания руководства.'}</p>${dream?`<div class="c"><label for="cf-dream-name">Название клуба</label><input id="cf-dream-name" type="text" maxlength="30" placeholder="ФК Север" value="${cfEsc(CF_DREAM_NAME)}" style="display:block;width:100%;margin-top:8px" oninput="CF_DREAM_NAME=this.value"><p class="mu" id="cf-dream-error" role="status"></p></div>`:''}<h2>Лига</h2><div class="chips">${Object.keys(L).map(k=>`<button class="${k==LG?"":"s"}" onclick="LG='${k}';DV=0;start()">${k}</button>`).join("")}</div>${LD[LG].length?`<div class="chips">${[0,...LD[LG].map((_,i)=>i+1)].map(d=>`<button class="${d==DV?'':'s'}" onclick="DV=${d};start()">${d+1}-й дивизион</button>`).join('')}</div>`:''}<h2>${dream?'Место клуба в лиге':'Клуб'}</h2>${dream?'<p class="mu">Твоя команда займёт место выбранного клуба. Его игроки тоже доступны при наборе состава.</p>':''}<div class="clubs">${LL(LG,DV).map((s,i)=>{const[n,v]=s.split(":");return`<button class="club" onclick="${dream?`cfStartDreamClub(${i})`:`newGame('${LG}',${i},${DV},${dr?1:0})`}">${crest(n,'lg')}<span class="club-n">${n}<small>${dream?'Занять место клуба':dr?'Собрать состав':'Сила '+v}</small></span><span class="club-s">${v}</span></button>`}).join("")}</div>`}
 function vMatch(){const u=me();if(G.fired)return`<div class='c'><h2>Тебя уволили</h2><p>Репутация упала. Клубы, готовые тебя взять:</p>${fo().map((o,i)=>`<div class='p' style='cursor:default'><span style='flex:1'>${o.name}<span class='mu'> · ${o.lg} · сила ${o.str}</span></span><button onclick='G.of=G.fo;take(${i})'>Принять</button></div>`).join('')}<button class='s' style='margin-top:8px' onclick='reset()'>В меню</button></div>`;if(G.round>=G.fx.length){const pos=sorted().findIndex(t=>t.user)+1;return`<div class="c"><h2>Сезон окончен</h2><p>${u.name} финишировал на ${pos}-м месте из ${G.t.length}.${pos==1?" 🏆 Чемпион!":""}</p><p>${CN[G.cup.k]}: ${(G.cup.al||[]).length==1&&G.cup.al[0]==u.name?'🏆 твоя победа!':'победитель — '+((G.cup.al||[])[0]||'—')}</p><div class="row"><button onclick="gala()">Церемония и новый сезон</button><button class="s" onclick="G=null;start()">В меню</button></div></div>`}
 const m=G.fx[G.round].find(([i,j])=>G.t[i].user||G.t[j].user),h=G.t[m[0]],a=G.t[m[1]],ok=xiOk(),cd=due()&&alive();let rep='';
 if(G.rep){const r=G.rep;rep=`<div class="c"><div class="mu">${r.l||'Прошлый тур'}</div><div class="board"><div>${crest(r.h,'lg')}<span>${r.h}</span></div><div class="sc">${r.gh}<i>:</i>${r.ga}</div><div>${crest(r.a,'lg')}<span>${r.a}</span></div></div>${r.pn?`<div class="mu" style="text-align:center">По пенальти прошёл ${r.pn}</div>`:''}${r.pp?`<div class='mu' style='text-align:center'>Владение ${r.pp}%–${100-r.pp}% · Удары ${r.sh}–${r.sa}</div>`:''}${r.ev.map(e=>`<div class="mu">${e.m}’ ${e.who} (${e.t=="h"?r.h:r.a})</div>`).join("")}</div>`}
@@ -419,20 +437,46 @@ const allT=()=>[...G.t,...Object.values(G.oth||{}).flatMap(o=>o.t)],tsort=tt=>[.
 function lnx(tt,lv,lg,o){const l1=tsort(tt)[0].name;if(o.ld&&o.ld!=l1)nw('📈 '+l1+' возглавил таблицу',lg);o.ld=l1;lv.forEach(z=>{const gh=z.ev.filter(e=>e.t=='h').length,ga=z.ev.length-gh,w=gh>ga;if(Math.abs(gh-ga)>=4)nw('💥 '+(w?z.h:z.a)+' разгромил '+(w?z.a:z.h)+' '+Math.max(gh,ga)+':'+Math.min(gh,ga),lg);const c={};z.ev.forEach(e=>{const k=e.who+'|'+(e.t=='h'?z.h:z.a);c[k]=(c[k]||0)+1});Object.keys(c).forEach(k=>{if(c[k]>=3){const[n,t]=k.split('|');nw('🎩 Хет-трик: '+n+' ('+t+')',lg)}})})}
 function oth(r){Object.keys(G.oth||{}).forEach(k=>{const o=G.oth[k];if(r>=o.fx.length)return;const lv=[];o.fx[r].forEach(([i,j])=>{const h=o.t[i],a=o.t[j],x=sim(h,a,0);upd(h,x.gh,x.ga);upd(a,x.ga,x.gh);lv.push({h:h.name,a:a.name,ev:x.ev})});lnx(o.t,lv,k,o)})}
 function othEnd(){Object.keys(G.oth||{}).forEach(k=>{const o=G.oth[k],b=o.t.flatMap(t=>t.squad.map(p=>({p,t:t.name}))).sort((x,y)=>y.p.g-x.p.g)[0];nw('🏆 Чемпион: '+tsort(o.t)[0].name,k);if(b&&b.p.g>0){b.p.gs=(b.p.gs||0)+1;nw('⭐ Золотая звезда: '+b.p.n+' ('+b.t+'), '+b.p.g+' г.',k)}o.t.forEach(t=>{prog(t);t.p=t.w=t.d=t.l=t.gf=t.ga=t.pts=0});o.ld=''})}
-function vCar2(){const ks=[G.lg,...Object.keys(G.oth||{})],k=ks[C(LS,0,ks.length-1)],tt=k==G.lg?G.t:G.oth[k].t,of=G.round<3&&G.of?G.of:[],sc=tt.flatMap(t=>t.squad.map(p=>({...p,cl:t.name,u:t.user}))).sort((a,b)=>b.g-a.g||b.r-a.r).slice(0,15),sel=(v,f)=>`<select onchange='${f}=this.value;render()' style='width:100%;padding:10px;margin:8px 0;font:inherit;border-radius:10px;background:var(--cd);color:var(--fg);border:1px solid var(--bd)'>${v}</select>`;return coachCard()+`<div class='c'><b>Предложения от клубов</b>${of.length?of.map((o,i)=>`<div class='p' style='cursor:default'><span style='flex:1'>${o.name}<span class='mu'> · ${o.lg} · сила ${o.str}</span></span><button onclick='take(${i})'>Принять</button></div>`).join(''):`<p class='mu'>Предложения приходят в начале сезона, если ты в топ-3 или директор тебя очень ценит.</p>`}</div><div class='c'><b>Лучшие бомбардиры лиги</b>${sel(ks.map((x,i)=>`<option value='${i}' ${x==k?'selected':''}>${x}</option>`).join(''),'LS')}${tsort(tt).slice(0,5).map((t,i)=>`<div class='mu'>${i+1}. ${t.name} <b style='float:right'>${t.pts} очк.</b></div>`).join('')}<div style='height:8px'></div>${sc.map(p=>`<div class='p' style='cursor:default'><span class='b'>${p.pos}</span><span style='flex:1'>${p.n} ${st(p)}<b class='ib' onclick='card(${p.id})'>ⓘ</b><span class='mu'> · ${p.cl} · ${cfMoneyM(price(p))}</span></span><b>⚽ ${p.g}</b>${p.u?'':`<button ${G.bud>=price(p)&&me().squad.length<24&&win()?'':'disabled'} onclick='bid(${p.id})'>Купить</button>`}</div>`).join('')}</div><div class='c'><b>Новости</b>${sel(`<option value=''>Все лиги</option>`+ks.map(x=>`<option value='${x}' ${x==NF?'selected':''}>${x}</option>`).join(''),'NF')}${(G.news||[]).filter(s=>!NF||s.includes('['+NF+']')).map(s=>`<div style='padding:6px 0;border-bottom:1px solid var(--bd)'>${s}</div>`).join('')||'<p class=mu>Пока тихо</p>'}</div>`+vHall()}
+function vCar2(){const ks=[G.lg,...Object.keys(G.oth||{})],k=ks[C(LS,0,ks.length-1)],tt=k==G.lg?G.t:G.oth[k].t,of=G.round<3&&G.of?G.of:[],sc=tt.flatMap(t=>t.squad.map(p=>({...p,cl:t.name,u:t.user}))).sort((a,b)=>b.g-a.g||b.r-a.r).slice(0,15),sel=(v,f)=>`<select onchange='${f}=this.value;render()' style='width:100%;padding:10px;margin:8px 0;font:inherit;border-radius:10px;background:var(--cd);color:var(--fg);border:1px solid var(--bd)'>${v}</select>`;return coachCard()+cfAwardsHistory()+`<div class='c'><b>Предложения от клубов</b>${of.length?of.map((o,i)=>`<div class='p' style='cursor:default'><span style='flex:1'>${o.name}<span class='mu'> · ${o.lg} · сила ${o.str}</span></span><button onclick='take(${i})'>Принять</button></div>`).join(''):`<p class='mu'>Предложения приходят в начале сезона, если ты в топ-3 или директор тебя очень ценит.</p>`}</div><div class='c'><b>Лучшие бомбардиры лиги</b>${sel(ks.map((x,i)=>`<option value='${i}' ${x==k?'selected':''}>${x}</option>`).join(''),'LS')}${tsort(tt).slice(0,5).map((t,i)=>`<div class='mu'>${i+1}. ${t.name} <b style='float:right'>${t.pts} очк.</b></div>`).join('')}<div style='height:8px'></div>${sc.map(p=>`<div class='p' style='cursor:default'><span class='b'>${p.pos}</span><span style='flex:1'>${p.n} ${st(p)}<b class='ib' onclick='card(${p.id})'>ⓘ</b><span class='mu'> · ${p.cl} · ${cfMoneyM(price(p))}</span></span><b>⚽ ${p.g}</b>${p.u?'':`<button ${G.bud>=price(p)&&me().squad.length<24&&win()?'':'disabled'} onclick='bid(${p.id})'>Купить</button>`}</div>`).join('')}</div><div class='c'><b>Новости</b>${sel(`<option value=''>Все лиги</option>`+ks.map(x=>`<option value='${x}' ${x==NF?'selected':''}>${x}</option>`).join(''),'NF')}${(G.news||[]).filter(s=>!NF||s.includes('['+NF+']')).map(s=>`<div style='padding:6px 0;border-bottom:1px solid var(--bd)'>${s}</div>`).join('')||'<p class=mu>Пока тихо</p>'}</div>`+vHall()}
 let CC=0,LS=0,NF='',FL={pos:'',lg:'',age:0,min:0,so:'r'};
 const allL=()=>[...G.t.map(t=>[t,G.lg]),...Object.entries(G.oth||{}).flatMap(([k,o])=>o.t.map(t=>[t,k]))],lgOf=t=>(allL().find(x=>x[0]===t)||[0,G.lg])[1],fp=p=>(!SF||(SF==1?p.rs:p.gs))&&(!FL.pos||p.pos==FL.pos),ag=a=>!+FL.age||(+FL.age==1?a<=21:+FL.age==2?a>=22&&a<=29:a>=30),okp=p=>fp(p)&&ag(p.age)&&p.r>=+FL.min,act=()=>SF||FL.pos||FL.lg||+FL.age||+FL.min,srt=(a,b)=>FL.so=='g'?b.g-a.g:FL.so=='p'?price(a)-price(b):FL.so=='a'?a.age-b.age:b.r-a.r;
 const flt2=full=>{const b=(l,on,f)=>`<button class='${on?'':'s'}' onclick='${f};render()'>${l}</button>`,s=(f,o,v)=>`<select onchange='${f}=this.value;render()' style='flex:1;padding:8px;font:inherit;border-radius:10px;background:var(--cd);color:var(--fg);border:1px solid var(--bd)'>${o.map(([x,l])=>`<option value='${x}' ${x==v?'selected':''}>${l}</option>`).join('')}</select>`;return`<div class='row' style='margin-top:8px'>${[['Все',0],['🔴',1],['⭐',2]].map(([l,v])=>b(l,SF==v,'SF='+v)).join('')}</div><div class='row' style='margin-top:8px'>${['','GK','DEF','MID','FWD'].map(x=>b(x||'Все поз.',FL.pos==x,'FL.pos='+JSON.stringify(x))).join('')}</div>`+(full?`<div class='row' style='margin-top:8px'>${s('FL.lg',[['','Все лиги'],...Object.keys(L).map(k=>[k,k])],FL.lg)}${s('FL.age',[[0,'Любой возраст'],[1,'до 21'],[2,'22–29'],[3,'30+']],FL.age)}</div><div class='row' style='margin-top:8px'>${s('FL.min',[[0,'Любой рейтинг'],[60,'60+'],[70,'70+'],[75,'75+'],[80,'80+']],FL.min)}${s('FL.so',[['r','По рейтингу'],['g','По голам'],['p','Подешевле'],['a','Помоложе']],FL.so)}</div>`:'')};
 const rep=()=>(G.co||{}).rp??3;
-function coach(ps){const o=G.co=G.co||{t:0,c:0,e:0,s:0};o.s++;const ex=G.exp||99;o.rp=Math.max(0,(o.rp??3)+(ps<ex?4:ps==ex?2:ps>ex+2?-4:-1));if(ps==1){o.t++;o.rp+=3;boom()}if(G.cup.rd>=4&&G.cup.al[0]==me().name){o[G.cup.k=='CL'?'c':'e']++;o.rp+=G.cup.k=='CL'?6:2;boom()}if(ps>ex+2)nw('📉 Руководство недовольно: цель была топ-'+ex);ballon()}
+function coach(ps){const o=G.co=G.co||{t:0,c:0,e:0,s:0};o.s++;const ex=G.exp||99;o.rp=Math.max(0,(o.rp??3)+(ps<ex?4:ps==ex?2:ps>ex+2?-4:-1));if(ps==1){o.t++;o.rp+=3;boom()}if(G.cup.rd>=4&&G.cup.al[0]==me().name){o[G.cup.k=='CL'?'c':'e']++;o.rp+=G.cup.k=='CL'?6:2;boom()}if(ps>ex+2)nw('📉 Руководство недовольно: цель была топ-'+ex);cfSaveCoachAward();ballon()}
 function cfOldCoachCard(){const o=G.co||{};return`<div class='c hero'><div class='mu'>Тренер</div><h2>${me().name}</h2><div class='row' style='gap:14px;margin-top:6px'><span>🏆 <b>${o.t||0}</b> титулов</span><span>🌍 <b>${o.c||0}</b> ЛЧ</span><span>🥈 <b>${o.e||0}</b> ЛЕ</span><span>📅 <b>${o.s||0}</b> сез.</span></div><p class='mu'>Репутация: ${rep()}. Чем больше титулов и кубков ЛЧ, тем больше клубов зовёт тебя к себе.</p></div>`}
 const OF={GK:[0,0,-8,0,-2,-3],DEF:[-8,-20,-10,-14,4,2],MID:[-6,-8,2,-2,-10,-6],FWD:[2,4,-10,0,-32,-6]};
 function card(id){let p=null,cl='';allL().forEach(([t])=>{const q=t.squad.find(x=>x.id==id);if(q){p=q;cl=t.name}});if(!p)p=(G.youth||[]).find(x=>x.id==id);if(!p)return;const gk=p.pos=='GK',LB=gk?['DIV','HAN','KIC','REF','SPD','POS']:['PAC','SHO','PAS','DRI','DEF','PHY'],s=p.st&&p.st.length==6?p.st:OF[p.pos].map(o=>C(p.r+o,25,97)),an=i=>-Math.PI/2+i*Math.PI/3,hex=k=>[0,1,2,3,4,5].map(i=>(100+70*k*Math.cos(an(i))).toFixed(1)+','+(100+70*k*Math.sin(an(i))).toFixed(1)).join(' '),pts=s.map((v,i)=>(100+v*.7*Math.cos(an(i))).toFixed(1)+','+(100+v*.7*Math.sin(an(i))).toFixed(1)).join(' '),lab=LB.map((l,i)=>`<text x='${(100+86*Math.cos(an(i))).toFixed(1)}' y='${(103+86*Math.sin(an(i))).toFixed(1)}' text-anchor='middle' font-size='9' fill='#9db'>${l} ${s[i]}</text>`).join(''),d=document.createElement('div');d.className='md';d.onclick=e=>{if(e.target==d)d.remove()};d.innerHTML=`<div class='c' style='max-width:340px;width:100%'><div style='display:flex;justify-content:space-between;align-items:center'><div><b style='font-size:18px'>${p.n}</b> ${st(p)}<div class='mu'>${p.pos} · ${p.age} л.${cl?' · '+cl:''}</div></div><div class='sc' style='font-size:40px;letter-spacing:0'>${p.r}</div></div><svg viewBox='0 0 200 200' style='width:100%;max-width:300px;margin:0 auto;display:block'><polygon points='${hex(1)}' fill='none' stroke='rgba(255,255,255,.22)'/><polygon points='${hex(.5)}' fill='none' stroke='rgba(255,255,255,.12)'/><polygon points='${pts}' fill='rgba(61,220,107,.35)' stroke='#3ddc6b' stroke-width='2'/>${lab}</svg><div class='mu'>Стоимость: ${cfMoneyM(price(p))}${p.pot?' · потенциал '+p.pot:''}</div>${me().squad.some(q=>q.id===p.id)?`<p class='mu'>Контракт: ${cfContractLabel(p)}</p>`:''}<button style='margin-top:8px' onclick='this.parentNode.parentNode.remove()'>Закрыть</button></div>`;document.body.appendChild(d)}
 const win=()=>{const h=Math.floor(G.fx.length/2);return G.round<4||(G.round>=h-1&&G.round<h+2)};
 const winTxt=()=>{const h=Math.floor(G.fx.length/2);return win()?'🟢 Трансферное окно открыто':'🔴 Окно закрыто — откроется '+(G.round<h-1?'в туре '+(h-1):'в следующем сезоне')};
 const setExp=()=>{G.exp=[...G.t].sort((a,b)=>b.str-a.str).findIndex(t=>t.user)+1;nw('🎯 Цель руководства: топ-'+G.exp)};
-function bdList(){const w=cupWin(clC()),a=[];allL().forEach(([t,l])=>t.squad.forEach(p=>{if(p.r<70&&!(p.g>5))return;a.push({p,t,l,s:(p.cg||0)*3+(p.g||0)+(p.r>=85?2:0)+(w==t.name?6:0)+(p.r-75)/5})}));return a.sort((x,y)=>y.s-x.s).slice(0,3)}
-function ballon(){const L3=window.BDL||bdList();window.BDL=null;const b=L3[0];if(!b||b.s<4)return;const p=b.p;p.bd=(p.bd||0)+1;p.r=C(p.r+7,35,99);(G.bh=G.bh||[]).unshift({s:G.season,n:p.n,t:b.t.name});G.bh=G.bh.slice(0,30);nw('🥇 Золотой мяч: '+p.n+' ('+b.t.name+') — оранжевая звезда и +7 к рейтингу',b.l);if(b.t.user)toast('🥇 Золотой мяч у твоего игрока: '+p.n)}
+function bdList(){
+  const clWinner=cupWin(clC()),elWinner=cupWin(elC()),candidates=[];
+  for(const [league,teams] of cfSeasonTables()){
+    tsort(teams).forEach((team,index)=>{
+      const place=index+1,level=cfLeagueFactor(team),trophies=cfTrophyPoints(team,place,clWinner,elWinner);
+      for(const player of team.squad){
+        const goals=player.g||0,europe=player.cg||0,defensive=['GK','DEF'].includes(player.pos);
+        const defense=defensive&&team.p?Math.max(0,1.75-team.ga/team.p)*Math.max(0,player.r-65)*.68:0;
+        const contribution=goals+europe*2+defense;
+        if(contribution<4)continue;
+        const domestic=goals*Math.sqrt(38/Math.max(20,team.p))*(.70+.30*Math.min(1,level));
+        const score=domestic+europe*2.2+defense+trophies*Math.min(1,contribution/22)+Math.max(0,player.r-75)*.12;
+        candidates.push({p:player,t:team,l:league,s:score,titles:cfAwardTitles(team,place,clWinner,elWinner)});
+      }
+    });
+  }
+  return candidates.sort((a,b)=>b.s-a.s||b.p.r-a.p.r||a.p.id-b.p.id).slice(0,3);
+}
+function ballon(){
+  if(G.bh?.some(a=>a.s===G.season))return;
+  const winner=bdList()[0];
+  if(!winner)return;
+  const p=winner.p;
+  p.bd=(p.bd||0)+1;
+  G.bh=[{s:G.season,n:p.n,t:winner.t.name},...(G.bh||[])].slice(0,30);
+  nw('🥇 Золотой мяч: '+p.n+' ('+winner.t.name+')',winner.l);
+  if(winner.t.user)toast('🥇 Золотой мяч у твоего игрока: '+p.n);
+}
 function fo(){if(G.fo)return G.fo;const o=G.co=G.co||{t:0,c:0,e:0,s:0};o.rp=Math.max(0,(o.rp??3)-3);const all=[...G.t.filter(t=>!t.user).map(t=>({name:t.name,str:t.str,lg:G.lg})),...G.pool.filter(t=>t.lg).map(t=>({name:t.name,str:t.str,lg:t.lg}))].sort((a,b)=>b.str-a.str),reach=58+o.rp*2.5;let c=all.filter(t=>t.str<=reach).slice(0,8);if(c.length<2)c=all.slice(-3);c=c.sort(()=>Math.random()-.5);return G.fo=c.slice(0,Math.min(5,2+Math.floor(o.rp/3)))}
 function bid(id){if(!win())return toast('🔴 Трансферное окно закрыто');const c=allT().find(t=>!t.user&&t.squad.some(p=>p.id==id));if(!c)return;const p=c.squad.find(x=>x.id==id),pr=price(p),d=document.createElement('div');d.className='md';d.onclick=e=>{if(e.target==d)d.remove()};d.innerHTML=`<div class='c' style='max-width:340px;width:100%'><b>${p.n}</b> ${st(p)}<div class='mu'>${c.name} · цена ${cfMoneyM(pr)} · у тебя ${cfMoneyM(G.bud)}</div><p>Сколько предложишь?</p><div class='row'>${[.7,.85,1,1.15].map(k=>`<button class='s' onclick='bd2(${id},${k})'>${cfTransferFee(cfRoundMoney(pr*k))}</button>`).join('')}</div><button style='margin-top:10px' class='s' onclick='this.parentNode.parentNode.remove()'>Отмена</button></div>`;document.body.appendChild(d)}
 function bd2(id,k,ct){document.querySelectorAll('.md').forEach(e=>e.remove());const c=allT().find(t=>!t.user&&t.squad.some(p=>p.id==id));if(!c)return;const p=c.squad.find(x=>x.id==id),pr=price(p),off=cfTransferFee(ct||cfRoundMoney(pr*k));if(G.bud<off)return toast('Не хватает бюджета');if(ct||k>=1.15||Math.random()<(k>=1?.85:k>=.85?.45:.1)-((p.rs||p.gs||p.bd)?.2:0)){buyT(id,off);return}G.nb=G.nb||{};const n=G.nb[id]=(G.nb[id]||0)+1;if(n>=3)return toast('Клуб прекратил переговоры');if(Math.random()<.5){const q=cfTransferFee(cfRoundMoney(pr*(1.05+Math.random()*.12))),d=document.createElement('div');d.className='md';d.innerHTML=`<div class='c' style='max-width:340px;width:100%'><b>${c.name}</b><p>Отказ, но клуб согласен на ${q} млн.</p><div class='row'><button onclick='bd2(${id},1,${q})'>Принять</button><button class='s' onclick='this.parentNode.parentNode.parentNode.remove()'>Отказаться</button></div></div>`;document.body.appendChild(d)}else toast('❌ Клуб отклонил '+off+' млн')}
@@ -608,27 +652,47 @@ const csOf=c=>c.ph?8+c.rd:c.ld,cupWin=c=>c&&c.ph&&c.rd>=4?c.al[0]:'',clC=()=>[G.
 const cupSc=c=>Object.entries((c&&c.sc)||{}).map(([k,g])=>{const i=k.lastIndexOf('|');return{n:k.slice(0,i),t:k.slice(i+1),g}}).sort((a,b)=>b.g-a.g);
 function ehRec(){[G.cup,G.cup2].forEach(c=>{let z=0;while(c&&csOf(c)<12&&z++<20)cupRd(c)});const cl=clC(),el=elC(),a=cupSc(cl)[0],b=cupSc(el)[0];(G.eh=G.eh||[]).unshift({s:G.season,cl:cupWin(cl)||'—',cs:a?a.n+' · '+a.t+' · '+a.g:'—',el:cupWin(el)||'—',es:b?b.n+' · '+b.g:'—'});G.eh=G.eh.slice(0,30);if(a)nw('👟 Бомбардир Лиги чемпионов: '+a.n+' ('+a.t+'), '+a.g+' г.')}
 function euroHist(){const e=G.eh||[],b=G.bh||[];return`<div class='c'><b>Еврокубки по сезонам</b>${e.length?e.map(x=>`<div class='eh'><div class='eh-s'>${x.s}</div><div class='eh-b'><div><span class='tag cl'>ЛЧ</span>${x.cl}</div><div class='mu'>Бомбардир: ${x.cs}</div><div><span class='tag el'>ЛЕ</span>${x.el} <span class='mu'>· ${x.es}</span></div></div></div>`).join(''):'<p class=mu>История появится после первого сезона</p>'}</div><div class='c'><b>Обладатели Золотого мяча</b>${b.length?b.map(x=>`<div class='ln'><span class='n'>${x.s}</span><span class='f'>${x.n} <span class='mu'>${x.t}</span></span><b class='orb'>●</b></div>`).join(''):'<p class=mu>Первую церемонию проведут в конце сезона</p>'}</div>`}
-function gala(){const L3=bdList(),gb=topSc()[0],cl=clC(),cs=cupSc(cl)[0],ok=L3[0]&&L3[0].s>=4,steps=[],u=me().name;window.BDL=L3;
+function gala(){
+  if(!G||G.round<G.fx.length||document.querySelector('.md.gala'))return;
+  cfCloseOtherLeagues();save();
+  const L3=bdList(),gb=topSc()[0],cs=cupSc(clC())[0],ok=!!L3[0],steps=[];
+  const coachAward=cfCoachAward();
 const aw=(k,n,sub,cls='')=>`<div class='aw ${cls}'><div class='aw-k'>${k}</div><div class='aw-n'>${n}</div><div class='aw-m'>${sub}</div></div>`;
 if(gb&&gb.g>0)steps.push(aw('Золотая бутса · '+G.lg,gb.n,gb.t+' · '+gb.g+' голов · <span class="g">★</span> золотая звезда'));
 if(cs)steps.push(aw('Лучший бомбардир Лиги чемпионов',cs.n,cs.t+' · '+cs.g+' голов'));
-if(ok){[2,1].forEach(i=>{const b=L3[i];if(b)steps.push(aw('Золотой мяч · '+(i+1)+'-е место',b.p.n,b.t.name+' · рейтинг '+b.p.r+' · голов '+(b.p.g||0)+' + '+(b.p.cg||0)+' в еврокубках'))});steps.push('D');const w=L3[0];steps.push(`<div class='aw win'><div class='ball'></div><div class='aw-k'>Золотой мяч ${G.season}</div><div class='aw-n big'>${w.p.n}</div><div class='aw-m'>${w.t.name} · голов ${w.p.g||0} + ${w.p.cg||0} в еврокубках</div><div class='prize'><span><b>+7</b> к рейтингу</span><span><b style='color:#ff8a00'>★</b> оранжевая звезда</span></div>${w.t.user?`<div class='yours'>Это твой игрок!</div>`:''}</div>`)}
+if(coachAward)steps.push(aw('Тренер сезона',cfEsc(coachAward.name),cfEsc(coachAward.club+' · '+cfCoachAwardSummary(coachAward)),'win'));
+if(ok){[2,1].forEach(i=>{const b=L3[i];if(b)steps.push(aw('Золотой мяч · '+(i+1)+'-е место',b.p.n,b.t.name+' · рейтинг '+b.p.r+' · голов '+(b.p.g||0)+' + '+(b.p.cg||0)+' в еврокубках'))});steps.push('D');const w=L3[0];steps.push(`<div class='aw win'><div class='ball'></div><div class='aw-k'>Золотой мяч ${G.season}</div><div class='aw-n big'>${w.p.n}</div><div class='aw-m'>${w.t.name} · голов ${w.p.g||0} + ${w.p.cg||0} в еврокубках</div><div class='prize'><span>${cfEsc(w.titles.join(' · ')||'Награда за сезон')}</span><span><b style='color:#ff8a00'>★</b> оранжевая звезда</span></div>${w.t.user?`<div class='yours'>Это твой игрок!</div>`:''}</div>`)}
 if(!steps.length){nextSeason();return}
 const d=document.createElement('div');d.className='md gala';d.innerHTML=`<div class='gw'><div class='eyebrow'>Церемония · сезон ${G.season}</div><h2 class='gt'>Награды сезона</h2><div id='gs' class='gs'><p class='mu'>Звёзды собираются в зале. Объявляем лауреатов.</p></div><button id='gnx' class='cta'>Объявить</button><button class='s skip' id='gsk'>Пропустить церемонию</button></div>`;document.body.appendChild(d);
-let i=0;const box=document.getElementById('gs'),bt=document.getElementById('gnx'),end=()=>{d.remove();nextSeason()};document.getElementById('gsk').onclick=end;
-const go=()=>{if(i>=steps.length){end();return}const st=steps[i++];if(st=='D'){bt.disabled=true;box.innerHTML=`<div class='aw drum'><div class='aw-k'>И Золотой мяч получает</div><div class='dots'><i></i><i></i><i></i></div></div>`;setTimeout(()=>{bt.disabled=false;go()},2200);return}box.innerHTML=st;if(st.includes("class='aw win'"))boom();bt.textContent=i>=steps.length?'Начать новый сезон':steps[i]=='D'?'Объявить победителя':'Дальше'};bt.onclick=go}
+let i=0,closed=false;const box=document.getElementById('gs'),bt=document.getElementById('gnx'),end=()=>{if(closed)return;closed=true;d.remove();nextSeason()};document.getElementById('gsk').onclick=end;
+const go=()=>{if(closed||!d.isConnected)return;if(i>=steps.length){end();return}const st=steps[i++];if(st=='D'){bt.disabled=true;box.innerHTML=`<div class='aw drum'><div class='aw-k'>И Золотой мяч получает</div><div class='dots'><i></i><i></i><i></i></div></div>`;setTimeout(()=>{bt.disabled=false;go()},2200);return}box.innerHTML=st;if(st.includes("class='aw win'"))boom();bt.textContent=i>=steps.length?'Начать новый сезон':steps[i]=='D'?'Объявить победителя':'Дальше'};bt.onclick=go}
 const ICO=['<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5l3.8 2.8-1.4 4.4H9.6l-1.4-4.4z"/></svg>','<svg viewBox="0 0 24 24"><path d="M8.5 3.5L3.5 6.5l2 4 2-1v11h9v-11l2 1 2-4-5-3c-.4 1.7-1.8 2.7-3.5 2.7S8.9 5.2 8.5 3.5z"/></svg>','<svg viewBox="0 0 24 24"><path d="M12 21v-8.5M12 12.5C12 8.6 9.3 6.5 5 6.5c0 3.9 2.7 6 7 6zM12 11c0-4 2.8-6.5 7-6.5 0 4-2.8 6.5-7 6.5z"/></svg>','<svg viewBox="0 0 24 24"><path d="M4 8.5h15M15 4.5l4 4-4 4M20 15.5H5M9 11.5l-4 4 4 4"/></svg>','<svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V5M19 20v-6"/></svg>','<svg viewBox="0 0 24 24"><path d="M8 4h8v5.5a4 4 0 01-8 0zM8 6H5a3 3 0 003 3.5M16 6h3a3 3 0 01-3 3.5M12 13.5V17M8.5 20h7"/></svg>'];
 const TBL=['Матч','Состав','Академия','Трансферы','Таблица','Карьера'].map((n,i)=>ICO[i]+'<span>'+n+'</span>');
 function topBar(){const u=me(),co=G.co||{},tr=G.tr||{d:80,f:70};return`<header class="top"><div class="top-id">${crest(u.name,'lg')}<div class="top-t"><div class="top-n">${u.name}</div><div class="cf-coach-line">${cfEsc(cfCoachName())}</div><div class="top-m">${G.lg} · сезон ${G.season} · тур ${Math.min(G.round+1,G.fx.length)} из ${G.fx.length}${G.q?' · '+CN[G.q]:''}</div></div></div><div class="top-k"><div class="mt"><span>Директор</span><i style="--w:${tr.d}%"></i></div><div class="mt"><span>Фанаты</span><i style="--w:${tr.f}%"></i></div></div><div class="top-s"><div><b>${G.bud.toLocaleString('ru-RU',{maximumFractionDigits:2})}</b><span>млн €</span></div><div><b>${G.exp?'топ-'+G.exp:'—'}</b><span>цель</span></div><div><b>${co.t||0}</b><span>титулы</span></div><div><b>${rep()}</b><span>репутация</span></div></div></header>`}
 const DS=['GK','DEF','DEF','DEF','DEF','MID','MID','MID','FWD','FWD','FWD','GK','DEF','DEF','MID','MID','FWD','FWD'],PN={GK:'вратарь',DEF:'защитник',MID:'полузащитник',FWD:'нападающий'};
-const fid=id=>{for(const t of allT()){const p=t.squad.find(q=>q.id==id);if(p)return[p,t]}return null};
+const fid=id=>{
+  const teams=G.dr?.reserve?[...allT(),G.dr.reserve]:allT();
+  for(const team of teams){const player=team.squad.find(p=>p.id==id);if(player)return [player,team];}
+  return null;
+};
 function drOffer(i){const pos=DS[i],taken=new Set(me().squad.map(p=>p.id)),pl=allT().filter(t=>!t.user).flatMap(t=>t.squad.filter(p=>p.pos==pos&&!taken.has(p.id)&&!(p.inj>0)).map(p=>p)),hi=Math.random()<.35?88:85,tiers=i<11?[[hi,99],[79,hi-1],[72,78]]:[[80,99],[74,79],[67,73]],used=new Set(),o=[];tiers.forEach(([a,b])=>{let c=pl.filter(p=>p.r>=a&&p.r<=b&&!used.has(p.id));if(!c.length)c=pl.filter(p=>!used.has(p.id));if(!c.length)return;const p=c[R(0,c.length-1)];used.add(p.id);o.push(p.id)});return o.sort(()=>Math.random()-.5)}
 function drInit(){me().squad=[];G.xi=[];G.dr={i:0,o:drOffer(0)}}
-function drPick(id){const r=fid(id);if(!r||!G.dr)return;const[p,t]=r;t.squad=t.squad.filter(q=>q.id!=id);t.squad.push(mk(Math.max(55,p.r-5),p.pos));p.f=0;p.ft=0;p.inj=0;me().squad.push(p);G.dr.i++;if(G.dr.i>=DS.length)drDone();else G.dr.o=drOffer(G.dr.i);save();render();window.scrollTo&&window.scrollTo(0,0)}
+function drPick(id){
+  const draft=G?.dr, found=draft&&fid(id);
+  if(!found)return;
+  const [player,team]=found;
+  if(team.user||player.pos!==DS[draft.i]||(!draft.reserve&&!draft.o.includes(player.id)))return;
+  team.squad=team.squad.filter(p=>p.id!==player.id);
+  if(team!==draft.reserve)team.squad.push(mk(team.str-5,player.pos,R(20,26)));
+  player.f=0;player.ft=0;player.inj=0;delete player.contract;delete player.agentRequest;
+  me().squad.push(player);draft.i++;
+  if(draft.i>=DS.length)drDone();else if(!draft.reserve)draft.o=drOffer(draft.i);
+  cfClubIndex(true);save();render();window.scrollTo&&window.scrollTo(0,0);
+}
 function drDone(){const u=me();G.dr=null;setF('4-3-3');u.str=Math.round(xp().reduce((s,p)=>s+p.r,0)/11);const rk=[...G.t].sort((a,b)=>b.str-a.str).findIndex(x=>x.user);G.q=G.dv?null:rk<4?'CL':rk<6?'EL':null;mkCup();adv();setExp();TAB=1;toast('Состав собран · сила '+u.str);boom()}
 const SL={o:['СКР','УДР','ПАС','ДРБ','ЗАЩ','ФИЗ'],g:['ПРЫ','РУК','ВЫН','ПОЗ','РЕА','СКР']};
 function drCard(id){const r=fid(id);if(!r)return'';const[p,t]=r,tier=p.r>=85?'g':p.r>=78?'s':'b',lb=p.pos=='GK'?SL.g:SL.o;return`<button class="oc" data-t="${tier}" onclick="drPick(${p.id})"><div class="oc-top"><div class="oc-r">${p.r}<span class="b" data-p="${p.pos}">${p.pos}</span></div><div class="oc-id"><div class="oc-n">${p.n} ${st(p)}</div><div class="mu">${t.name} · ${p.age} лет</div></div></div>${p.st&&p.st.length==6?`<div class="oc-st">${p.st.map((v,j)=>`<div><span>${lb[j]}</span><b>${v}</b><i style="--w:${Math.min(99,v)}%"></i></div>`).join('')}</div>`:''}<div class="oc-go">Взять в состав</div></button>`}
-function vDraft(){const d=G.dr,u=me(),n=DS.length,pos=DS[d.i],sq=u.squad,avg=sq.length?Math.round(sq.reduce((s,p)=>s+p.r,0)/sq.length):0,o={GK:0,DEF:1,MID:2,FWD:3};return`<header class="top"><div class="top-id">${crest(u.name,'lg')}<div class="top-t"><div class="top-n">Драфт · ${u.name}</div><div class="cf-coach-line">${cfEsc(cfCoachName())}</div><div class="top-m">${G.lg} · пик ${d.i+1} из ${n}${d.i>=11?' · запас':' · основа'}</div></div></div><div class="prog"><i style="--w:${Math.round(d.i/n*100)}%"></i></div></header><div class="dr-ask"><span class="mu">Нужен</span> <b>${PN[pos]}</b>${sq.length?`<span class="mu"> · средний рейтинг состава <b class="g">${avg}</b></span>`:''}</div><div class="offers">${d.o.map(drCard).join('')}</div>${sq.length?`<div class="c"><div class="sub" style="margin-top:0">Твой состав · ${sq.length}</div><div class="picked">${[...sq].sort((a,b)=>o[a.pos]-o[b.pos]||b.r-a.r).map(p=>`<span class="pk"><span class="b" data-p="${p.pos}">${p.pos}</span>${p.n}<b>${p.r}</b></span>`).join('')}</div></div>`:''}<button class="s" style="width:100%;margin-top:8px" onclick="reset()">Выйти в меню</button>`}
+function vDraft(){const d=G.dr,u=me(),n=DS.length,pos=DS[d.i],sq=u.squad,avg=sq.length?Math.round(sq.reduce((s,p)=>s+p.r,0)/sq.length):0,o={GK:0,DEF:1,MID:2,FWD:3};return`<header class="top"><div class="top-id">${crest(u.name,'lg')}<div class="top-t"><div class="top-n">Драфт · ${u.name}</div><div class="cf-coach-line">${cfEsc(cfCoachName())}</div><div class="top-m">${G.lg} · пик ${d.i+1} из ${n}${d.i>=11?' · запас':' · основа'}</div></div></div><div class="prog"><i style="--w:${Math.round(d.i/n*100)}%"></i></div></header><div class="dr-ask"><span class="mu">Нужен</span> <b>${PN[pos]}</b>${sq.length?`<span class="mu"> · средний рейтинг состава <b class="g">${avg}</b></span>`:''}</div>${cfDraftOffers(d)}${sq.length?`<div class="c"><div class="sub" style="margin-top:0">Твой состав · ${sq.length}</div><div class="picked">${[...sq].sort((a,b)=>o[a.pos]-o[b.pos]||b.r-a.r).map(p=>`<span class="pk"><span class="b" data-p="${p.pos}">${p.pos}</span>${p.n}<b>${p.r}</b></span>`).join('')}</div></div>`:''}<button class="s" style="width:100%;margin-top:8px" onclick="slotMenu()">Выйти в меню</button>`}
 
 function ensureGK(){const u=me();if(!u||!u.squad)return;const fit=u.squad.filter(p=>p.pos=='GK'&&!(p.inj>0));if(fit.length){if(!xp().some(p=>p.pos=='GK'))setF(G.form||'4-3-3');return}const g=mk(Math.max(58,(u.str||70)-10),'GK',R(24,33));g.pot=0;g.rs=0;u.squad.push(g);nw('🧤 Все вратари выбыли — клуб срочно подписал '+g.n);try{toast('🧤 Подписан резервный вратарь '+g.n)}catch(e){}setF(G.form||'4-3-3')}
 function toast(s){const e=document.createElement('div');e.className='ts';e.textContent=s;document.body.appendChild(e);setTimeout(()=>e.remove(),2200)}
@@ -680,24 +744,35 @@ function cfMarketWage(p,club){const r=C(Number(p.r)||45,35,99),level=Math.max(.5
 function cfContract(p,club){if(!p.contract||!Number.isFinite(p.contract.until)||!Number.isFinite(p.contract.wage)){const years=p.age>=33?1:2+(Math.abs(Number(p.id)||0)%3);p.contract={until:G.season+years-1,wage:cfMarketWage(p,club)}}p.contract.wage=Math.round(C(p.contract.wage,100,500000));return p.contract}
 function cfContractLabel(p){const c=cfContract(p),left=Math.max(0,c.until-G.season+1);return left+' сез. · '+cfWageText(c.wage)}
 function cfCoachName(){const m=G?.manager;return m?.first&&m?.last?(m.first+' '+m.last):'Главный тренер'}
-function cfEnsureCareer(){if(!G||!G.t||!G.season)return;G.manager=G.manager||{first:'',last:''};G.club=G.club||{version:1,lastPayroll:G.season+':'+G.round,ledger:[],processedSeason:0};G.club.ledger=G.club.ledger||[];G.freeAgents=G.freeAgents||[];cfClubIndex();const user=G.t.find(t=>t.user);for(const p of user?.squad||[])cfContract(p,user);if(!G.club.freePoolInitialized){let maxId=0;for(const t of allT())for(const p of t.squad||[])maxId=Math.max(maxId,Number(p.id)||0);for(const p of [...(G.youth||[]),...(G.mk||[]),...G.freeAgents])maxId=Math.max(maxId,Number(p.id)||0);uid=Math.max(uid,maxId+1);for(let i=0;i<12;i++){const p=mk(C((user?.str||65)-7+(i%4)*3,48,86),['GK','DEF','MID','FWD'][i%4],21+i%13);p.freeSince=G.season;G.freeAgents.push(p)}G.club.freePoolInitialized=true}}
-function cfPayWages(){cfEnsureCareer();const key=G.season+':'+G.round;if(G.club.lastPayroll===key)return;const weekly=me().squad.reduce((s,p)=>s+cfContract(p,me()).wage,0),weeks=52/Math.max(1,G.fx.length),bill=cfRoundMoney(weekly*weeks/1e6);G.bud=cfRoundMoney(G.bud-bill);G.club.lastPayroll=key;G.club.ledger.unshift({season:G.season,round:G.round,kind:'salary',amount:bill});G.club.ledger=G.club.ledger.slice(0,24);if(G.bud<0)nw('Зарплатный фонд вывел бюджет в минус. Директор просит сократить расходы.');cfAgentRequests()}
+function cfEnsureCareer(){if(!G||!G.t||!G.season)return;G.manager=G.manager||{first:'',last:''};G.club=G.club||{version:1,lastPayroll:G.season+':'+G.round,ledger:[],processedSeason:0};G.club.ledger=G.club.ledger||[];G.freeAgents=G.freeAgents||[];cfClubIndex();const user=G.t.find(t=>t.user);for(const p of user?.squad||[])cfContract(p,user);if(!G.club.freePoolInitialized){let maxId=0;for(const t of allT())for(const p of t.squad||[])maxId=Math.max(maxId,Number(p.id)||0);for(const p of [...(G.youth||[]),...(G.mk||[]),...G.freeAgents])maxId=Math.max(maxId,Number(p.id)||0);uid=Math.max(uid,maxId+1);for(let i=0;i<12;i++){const p=mk(C((user?.str||65)-7+(i%4)*3,48,86),['GK','DEF','MID','FWD'][i%4],21+i%13);p.freeSince=G.season;G.freeAgents.push(p)}G.club.freePoolInitialized=true}if(!G.club.marketRules){cfRebalanceAgents();G.club.marketRules=1}}
+function cfPayWages(){
+  cfEnsureCareer();
+  const key=G.season+':'+G.round;
+  if(G.club.lastPayroll===key)return;
+  const club=me(),weekly=club.squad.reduce((sum,p)=>sum+cfContract(p,club).wage,0);
+  const cash=cfRoundFinances(club,Math.max(1,G.fx.length),weekly,G.bud);
+  G.bud=cfRoundMoney(G.bud+cash.income-cash.salary-cash.upkeep);
+  G.club.lastPayroll=key;
+  cfRecordClubCash(cfLedgerEntry('income',cash.income),cfLedgerEntry('salary',cash.salary),cfLedgerEntry('upkeep',cash.upkeep));
+  if(G.bud<0)nw('Бюджет в минусе. Директор просит сократить расходы клуба.');
+  cfAgentRequests();
+}
 function cfAgentRequests(){for(const p of me().squad){const c=cfContract(p,me());if(c.until<=G.season+1&&(!p.agentRequest||p.agentRequest.season<G.season)){const wage=Math.round(Math.max(c.wage*1.06,cfMarketWage(p,me())*1.08)/50)*50;p.agentRequest={wage,season:G.season};nw('Агент '+p.n+' просит новый контракт: '+cfWageText(wage))}}}
 function cfCoachEdit(){cfEnsureCareer();const d=cfClubModal('Имя тренера');d.body.innerHTML='<p class="mu">Имя сохраняется отдельно в этой карьере.</p><label>Имя<input id="cf-coach-first" maxlength="32" autocomplete="given-name"></label><label>Фамилия<input id="cf-coach-last" maxlength="40" autocomplete="family-name"></label><p class="mu" id="cf-coach-error"></p><button id="cf-coach-save">Сохранить</button>';d.body.querySelector('#cf-coach-first').value=G.manager.first;d.body.querySelector('#cf-coach-last').value=G.manager.last;d.body.querySelector('#cf-coach-save').onclick=()=>{const clean=v=>v.trim().replace(/[<>&"\x00-\x1f]/g,'').replace(/\s+/g,' '),first=clean(d.body.querySelector('#cf-coach-first').value),last=clean(d.body.querySelector('#cf-coach-last').value);if(!first||!last){d.body.querySelector('#cf-coach-error').textContent='Укажи имя и фамилию.';return}G.manager={first,last};nw('Тренер '+cfCoachName()+' возглавляет '+me().name);save();d.close();render()}}
 function cfClubModal(title){document.getElementById('cf-club-modal')?.remove();const el=document.createElement('div');el.id='cf-club-modal';el.className='md';el.style.zIndex='150';el.innerHTML='<div class="c cf-club-modal"><div class="row" style="justify-content:space-between"><h2></h2><button class="s" aria-label="Закрыть">✕</button></div><div class="cf-club-body"></div></div>';el.querySelector('h2').textContent=title;const close=()=>el.remove();el.querySelector('button').onclick=close;el.onclick=e=>{if(e.target===el)close()};document.body.append(el);return{body:el.querySelector('.cf-club-body'),close,el}}
 function cfClubStyle(){if(document.getElementById('cf-club-style'))return;const el=document.createElement('style');el.id='cf-club-style';el.textContent='.cf-club-modal{width:min(94vw,480px);max-height:86vh;overflow:auto}.cf-club-modal input,.cf-club-modal select{display:block;width:100%;padding:11px;margin:7px 0 12px;background:var(--bg,#10212b);color:var(--fg,#fff);border:1px solid var(--bd,#41616b);border-radius:9px;font:inherit}.cf-econ-summary{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cf-econ-summary b{display:block;margin-bottom:4px}.cf-contract-row{display:flex;gap:9px;align-items:center;padding:12px;border-bottom:1px solid var(--bd)}.cf-contract-row .grow{flex:1;min-width:0}.cf-contract-row small{display:block;font-size:11px;color:var(--mu,#9eb8bf);line-height:1.7}.cf-contract-row button{font-size:11px;padding:8px;flex-shrink:0}.cf-contract-warning{color:#edc367}.cf-contract-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.cf-coach-line{font-size:12px;color:var(--mu,#a9c1cb);margin:5px 0}';document.head.append(el)}
 function cfCoachCard(){cfClubStyle();return '<div class="c"><div class="mu">Главный тренер · карьера '+ACTIVE_SLOT+'</div><h2>'+cfEsc(cfCoachName())+'</h2><button class="s" onclick="cfCoachEdit()">'+(G.manager?.first?'Изменить имя':'Указать имя и фамилию')+'</button></div>'}
-function cfFindCandidate(id,kind){if(kind==='renew')return{p:me().squad.find(p=>p.id===id),team:me()};if(kind==='free')return{p:G.freeAgents.find(p=>p.id===id)};if(kind==='market')return{p:G.mk.find(p=>p.id===id)};const team=allT().find(t=>!t.user&&t.squad?.some(p=>p.id===id));return{p:team?.squad.find(p=>p.id===id),team}}
+function cfFindCandidate(id,kind){if(kind==='renew')return{p:me().squad.find(p=>p.id===id),team:me()};if(kind==='free')return{p:cfVisibleAgents().find(p=>p.id===id)};if(kind==='market')return{p:G.mk.find(p=>p.id===id)};const team=allT().find(t=>!t.user&&t.squad?.some(p=>p.id===id));return{p:team?.squad.find(p=>p.id===id),team}}
 function cfOfferAcquisition(id,fee,kind='club'){cfEnsureCareer();cfClubStyle();const source=cfFindCandidate(id,kind),p=source.p;if(!p)return;const renewing=kind==='renew';if(!renewing&&me().squad.length>=24)return toast('В заявке уже 24 игрока');if(!renewing&&kind!=='free'&&!win())return toast('Трансферное окно закрыто');const current=renewing?cfContract(p,me()):null,remaining=current?current.until-G.season+1:0;if(remaining>=5)return toast('До конца действующего контракта ещё пять сезонов');fee=renewing||kind==='free'?0:cfTransferFee(fee,price(p));const request=C(Math.round(Math.max(renewing?current.wage*1.05:0,p.agentRequest?.wage||0,cfMarketWage(p,me())*(kind==='free'?1.10:1.04))/50)*50,200,500000),d=cfClubModal(renewing?'Продление контракта':'Условия агента');let signed=false;
  d.body.innerHTML='<b>'+cfEsc(p.n)+'</b><p class="mu">'+(renewing?'Новый срок заменит действующий контракт.':kind==='free'?'Свободный агент · без трансферной выплаты.':'Трансфер: '+cfMoneyM(fee))+ '</p><p>Запрос агента: <b>'+cfWageText(request)+'</b></p><label>Зарплата, евро в неделю<input id="cf-offer-wage" type="number" min="100" max="500000" step="50" value="'+request+'"></label><label>Срок, сезоны<select id="cf-offer-years">'+[1,2,3,4,5].filter(y=>!renewing||y>remaining).map(y=>'<option value="'+y+'" '+(y===Math.min(5,Math.max(3,remaining+1))?'selected':'')+'>'+y+'</option>').join('')+'</select></label><p class="mu" id="cf-offer-total"></p><p id="cf-offer-status" class="mu"></p><button id="cf-offer-submit">Предложить условия</button>';
- const wageEl=d.body.querySelector('#cf-offer-wage'),yearsEl=d.body.querySelector('#cf-offer-years'),status=d.body.querySelector('#cf-offer-status'),total=d.body.querySelector('#cf-offer-total');const estimate=()=>{const w=Number(wageEl.value),bonus=w*(renewing?1:3);total.textContent='Разовая выплата: '+cfMoneyM(fee+bonus/1e6)+' · зарплата за год: '+cfMoneyM(w*52/1e6)+' · бюджет: '+cfMoneyM(G.bud)};wageEl.oninput=estimate;yearsEl.onchange=estimate;estimate();
- d.body.querySelector('#cf-offer-submit').onclick=()=>{if(signed)return;const wage=Number(wageEl.value),years=Number(yearsEl.value);if(!Number.isFinite(wage)||wage<100||wage>500000||!Number.isInteger(years)||years<1||years>5){status.textContent='Проверь зарплату и срок.';return}if(renewing&&years<=remaining){status.textContent='Выбери срок длиннее действующего.';return}const required=request*(years>=4?.96:years===1?1.06:1);if(wage<required){status.textContent='Агент отказал. Для этого срока он просит '+cfWageText(Math.ceil(required/50)*50)+'.';return}const again=cfFindCandidate(id,kind);if(again.p!==p){status.textContent='Игрок уже сменил клуб.';return}const bonus=wage*(renewing?1:3),charge=cfRoundMoney(fee+bonus/1e6);if(G.bud<charge){status.textContent='Для разовой выплаты не хватает '+cfMoneyM(charge-G.bud)+'.';return}if(!renewing&&me().squad.length>=24){status.textContent='В заявке уже 24 игрока.';return}if(!renewing&&kind!=='free'&&!win()){status.textContent='Трансферное окно закрыто.';return}if(kind==='club'&&again.team.squad.length<=15){status.textContent='Клуб не может отпустить игрока из-за короткой заявки.';return}
- signed=true;if(!renewing){if(kind==='club'){again.team.squad=again.team.squad.filter(x=>x!==p);again.team.squad.push(mk(again.team.str-6,p.pos,R(19,27)))}else if(kind==='free')G.freeAgents=G.freeAgents.filter(x=>x!==p);else G.mk=G.mk.filter(x=>x!==p);me().squad.push(p)}p.contract={wage:Math.round(wage),until:G.season+years-1};delete p.agentRequest;delete p.freeSince;G.bud=cfRoundMoney(G.bud-charge);cfClubIndex(true);nw((renewing?'Продлён контракт: ':'Подписан ')+p.n+' · '+cfWageText(wage)+' · до конца сезона '+p.contract.until);save();d.close();render();toast(renewing?'Контракт продлён':'Игрок подписан')};}
+ const wageEl=d.body.querySelector('#cf-offer-wage'),yearsEl=d.body.querySelector('#cf-offer-years'),status=d.body.querySelector('#cf-offer-status'),total=d.body.querySelector('#cf-offer-total');const estimate=()=>{const w=Number(wageEl.value),bonus=cfSigningBonus(p,w,kind);total.textContent='Разовая выплата: '+cfMoneyM(fee+bonus/1e6)+' · зарплата за год: '+cfMoneyM(w*52/1e6)+' · бюджет: '+cfMoneyM(G.bud)};wageEl.oninput=estimate;yearsEl.onchange=estimate;estimate();
+ d.body.querySelector('#cf-offer-submit').onclick=()=>{if(signed)return;const wage=Number(wageEl.value),years=Number(yearsEl.value);if(!Number.isFinite(wage)||wage<100||wage>500000||!Number.isInteger(years)||years<1||years>5){status.textContent='Проверь зарплату и срок.';return}if(renewing&&years<=remaining){status.textContent='Выбери срок длиннее действующего.';return}const required=request*(years>=4?.96:years===1?1.06:1);if(wage<required){status.textContent='Агент отказал. Для этого срока он просит '+cfWageText(Math.ceil(required/50)*50)+'.';return}const again=cfFindCandidate(id,kind);if(again.p!==p){status.textContent='Игрок уже сменил клуб.';return}const bonus=cfSigningBonus(p,wage,kind),charge=cfRoundMoney(fee+bonus/1e6);if(G.bud<charge){status.textContent='Для разовой выплаты не хватает '+cfMoneyM(charge-G.bud)+'.';return}if(!renewing&&me().squad.length>=24){status.textContent='В заявке уже 24 игрока.';return}if(!renewing&&kind!=='free'&&!win()){status.textContent='Трансферное окно закрыто.';return}if(kind==='club'&&again.team.squad.length<=15){status.textContent='Клуб не может отпустить игрока из-за короткой заявки.';return}
+ signed=true;if(!renewing){if(kind==='club'){again.team.squad=again.team.squad.filter(x=>x!==p);again.team.squad.push(mk(again.team.str-6,p.pos,R(19,27)))}else if(kind==='free'){G.freeAgents=G.freeAgents.filter(x=>x!==p);p.freeSignedSeason=G.season;}else G.mk=G.mk.filter(x=>x!==p);me().squad.push(p)}p.contract={wage:Math.round(wage),until:G.season+years-1};delete p.agentRequest;delete p.freeSince;G.bud=cfRoundMoney(G.bud-charge);cfClubIndex(true);nw((renewing?'Продлён контракт: ':'Подписан ')+p.n+' · '+cfWageText(wage)+' · до конца сезона '+p.contract.until);save();d.close();render();toast(renewing?'Контракт продлён':'Игрок подписан')};}
 function cfRenew(id){cfOfferAcquisition(id,0,'renew')}
-function cfSeasonEndContracts(){cfEnsureCareer();if(G.club.processedSeason===G.season)return;G.club.processedSeason=G.season;const season=G.season;for(const t of allT()){const original=[...t.squad];for(const p of original){const c=cfContract(p,t);if(c.until>season)continue;const keepAI=!t.user&&((Number(p.id)+season)%7!==0);if(keepAI){c.until=season+2;c.wage=cfMarketWage(p,t);continue}t.squad=t.squad.filter(x=>x!==p);p.freeSince=season+1;delete p.contract;delete p.agentRequest;if(!G.freeAgents.some(x=>x.id===p.id))G.freeAgents.push(p);if(t.user){G.xi=G.xi.filter(id=>id!==p.id);nw(p.n+' покинул клуб по окончании контракта')}}}for(const p of G.freeAgents){p.age++;p.g=0;p.cg=0}G.freeAgents=G.freeAgents.filter(p=>p.age<39).sort((a,b)=>b.r-a.r).slice(0,100);cfClubIndex(true)}
-function cfContractsPanel(){cfEnsureCareer();const wage=me().squad.reduce((s,p)=>s+cfContract(p,me()).wage,0),bill=wage*52/Math.max(1,G.fx.length)/1e6;return '<div class="c"><h2>Контракты и зарплаты</h2><div class="cf-econ-summary"><div><b>'+cfWageText(wage)+'</b><span class="mu">Фонд команды</span></div><div><b>'+cfMoneyM(bill)+'</b><span class="mu">Списание за тур</span></div></div><p class="mu">Зарплата списывается по календарю чемпионата: 52 недели за сезон. Кубковый матч не создаёт второе списание.</p></div><div class="c" style="padding:0">'+[...me().squad].sort((a,b)=>cfContract(a).until-cfContract(b).until).map(p=>{const c=cfContract(p),remaining=c.until-G.season+1;return '<div class="cf-contract-row"><div class="grow"><b>'+cfEsc(p.n)+'</b><small class="'+(remaining<=1?'cf-contract-warning':'')+'">'+cfContractLabel(p)+' · до сезона '+c.until+'</small>'+(p.agentRequest?'<small class="cf-contract-warning">Агент: '+cfWageText(p.agentRequest.wage)+'</small>':'')+'</div><button class="s" '+(remaining>=5?'disabled':'')+' onclick="cfRenew('+p.id+')">Продлить</button></div>'}).join('')+'</div><h2>Свободные агенты</h2><div class="c" style="padding:0">'+(G.freeAgents.slice(0,35).map(p=>'<div class="cf-contract-row"><div class="grow"><b>'+cfEsc(p.n)+'</b><small>'+p.pos+' · '+p.age+' л. · рейтинг '+p.r+' · от '+cfWageText(cfMarketWage(p,me()))+'</small></div><button class="s" onclick="cfOfferAcquisition('+p.id+',0,\'free\')">Условия</button></div>').join('')||'<p class="mu">Свободных игроков пока нет.</p>')+'</div>'}
-function cfFinancePanel(){if(!G?.club)return '';return '<div class="c"><b>Последние выплаты</b>'+G.club.ledger.slice(0,6).map(e=>'<p class="mu">Сезон '+e.season+' · тур '+e.round+' · зарплата −'+cfMoneyM(e.amount)+'</p>').join('')+'</div>'}
-function cfSellPlayer(id){cfEnsureCareer();const u=me(),p=u.squad.find(x=>x.id===id);if(!p||u.squad.length<=15)return toast('В заявке должно остаться минимум 15 игроков');if(p.pos==='GK'&&u.squad.filter(x=>x.pos==='GK').length<=2)return toast('В заявке должно остаться два вратаря');if(!win())return toast('Трансферное окно закрыто');const buyers=G.t.filter(t=>!t.user);if(!buyers.length)return;const fee=cfRoundMoney(price(p)*.8);u.squad=u.squad.filter(x=>x!==p);buyers[R(0,buyers.length-1)].squad.push(p);G.xi=G.xi.filter(x=>x!==id);G.bud=cfRoundMoney(G.bud+fee);cfClubIndex(true);nw('Продан '+p.n+' за '+cfMoneyM(fee));save();render()}
+function cfSeasonEndContracts(){cfEnsureCareer();if(G.club.processedSeason===G.season)return;G.club.processedSeason=G.season;const season=G.season;for(const t of allT()){const original=[...t.squad];for(const p of original){const c=cfContract(p,t);if(c.until>season)continue;const keepAI=!t.user&&(p.r>=88&&p.age<34||(Number(p.id)+season)%7!==0);if(keepAI){c.until=season+2;c.wage=cfMarketWage(p,t);continue}t.squad=t.squad.filter(x=>x!==p);p.freeSince=season+1;delete p.contract;delete p.agentRequest;if(!G.freeAgents.some(x=>x.id===p.id))G.freeAgents.push(p);if(t.user){G.xi=G.xi.filter(id=>id!==p.id);nw(p.n+' покинул клуб по окончании контракта')}}}cfClubIndex(true)}
+function cfContractsPanel(){cfEnsureCareer();const wage=me().squad.reduce((s,p)=>s+cfContract(p,me()).wage,0),bill=wage*52/Math.max(1,G.fx.length)/1e6;return '<div class="c"><h2>Контракты и зарплаты</h2><div class="cf-econ-summary"><div><b>'+cfWageText(wage)+'</b><span class="mu">Фонд команды</span></div><div><b>'+cfMoneyM(bill)+'</b><span class="mu">Списание за тур</span></div></div><p class="mu">Бюджет пополняется по календарю чемпионата. Расходы на зарплаты, стадион и базу учитываются раз за тур. При крупном остатке руководство выделяет меньше новых средств.</p></div><div class="c" style="padding:0">'+[...me().squad].sort((a,b)=>cfContract(a).until-cfContract(b).until).map(p=>{const c=cfContract(p),remaining=c.until-G.season+1;return '<div class="cf-contract-row"><div class="grow"><b>'+cfEsc(p.n)+'</b><small class="'+(remaining<=1?'cf-contract-warning':'')+'">'+cfContractLabel(p)+' · до сезона '+c.until+'</small>'+(p.agentRequest?'<small class="cf-contract-warning">Агент: '+cfWageText(p.agentRequest.wage)+'</small>':'')+'</div><button class="s" '+(remaining>=5?'disabled':'')+' onclick="cfRenew('+p.id+')">Продлить</button></div>'}).join('')+'</div><h2>Свободные агенты</h2><div class="c" style="padding:0">'+(cfVisibleAgents().slice(0,35).map(p=>'<div class="cf-contract-row"><div class="grow"><b>'+cfEsc(p.n)+'</b><small>'+p.pos+' · '+p.age+' л. · рейтинг '+p.r+' · зарплата от '+cfWageText(cfMarketWage(p,me()))+'</small></div><button class="s" onclick="cfOfferAcquisition('+p.id+',0,\'free\')">Условия</button></div>').join('')||'<p class="mu">Свободных игроков пока нет.</p>')+'</div>'}
+function cfFinancePanel(){if(!G?.club)return '';return '<div class="c"><b>Последние выплаты</b>'+G.club.ledger.slice(0,6).map(e=>'<p class="mu">Сезон '+e.season+' · тур '+e.round+' · '+cfCashLabel(e.kind)+cfMoneyM(e.amount)+'</p>').join('')+'</div>'}
+function cfSellPlayer(id){cfEnsureCareer();const u=me(),p=u.squad.find(x=>x.id===id);if(!p||u.squad.length<=15)return toast('В заявке должно остаться минимум 15 игроков');if(p.pos==='GK'&&u.squad.filter(x=>x.pos==='GK').length<=2)return toast('В заявке должно остаться два вратаря');if(!win())return toast('Трансферное окно закрыто');if(p.freeSignedSeason===G.season)return toast('Игрок подписан свободным агентом. Продажа доступна со следующего сезона.');const buyers=G.t.filter(t=>!t.user);if(!buyers.length)return;const fee=cfRoundMoney(price(p)*.8);u.squad=u.squad.filter(x=>x!==p);buyers[R(0,buyers.length-1)].squad.push(p);G.xi=G.xi.filter(x=>x!==id);G.bud=cfRoundMoney(G.bud+fee);cfClubIndex(true);nw('Продан '+p.n+' за '+cfMoneyM(fee));save();render()}
 function vTr2(){cfEnsureCareer();cfClubStyle();const tab=G.club.tab||'market',tabs=[['market','Рынок'],['contracts','Контракты'],['free','Свободные'],['finance','Выплаты']],toolbar='<div class="cf-contract-toolbar">'+tabs.map(([key,name])=>'<button class="'+(tab===key?'':'s')+'" onclick="G.club.tab=\''+key+'\';render()">'+name+'</button>').join('')+'</div>';if(tab==='market')return toolbar+cfOldTransfers();const panels=cfContractsPanel().split('<h2>Свободные агенты</h2>');return toolbar+(tab==='contracts'?panels[0]:tab==='free'?'<h2>Свободные агенты</h2>'+panels[1]:cfFinancePanel())}
 function coachCard(){cfEnsureCareer();return cfCoachCard()+cfOldCoachCard()}
 
@@ -934,6 +1009,231 @@ function cfPenaltyShow(rep,done){
 }
 
 </script><script>
+/* CyberFoot season balance, season awards and custom clubs. */
+function cfDevelopPlayer(player, club) {
+  player.age++;
+  const age = player.age;
+  let change = 0;
+  if (age >= 35) change = -R(2, 4);
+  else if (age >= 31) change = -R(0, 2);
+  else if (age <= 26 && club) {
+    const potential = player.pot || Math.max(player.r, Math.min(87, (club.str || 65) + 2));
+    const gap = Math.max(0, potential - player.r);
+    const chance = age <= 22 ? .64 : .30;
+    if (gap && Math.random() < chance) change = Math.min(gap, R(1, age <= 22 && gap >= 7 ? 3 : 1));
+  }
+  player.r = C(player.r + change, 35, 99);
+  if (change && Array.isArray(player.st)) player.st = player.st.map(value => C(value + change, 1, 99));
+  player.g = 0;
+  player.cg = 0;
+}
+
+function cfRebalanceAgents() {
+  const clubs = allT();
+  const occupied = new Set(clubs.flatMap(team => team.squad.map(p => p.id)));
+  const buyers = clubs.filter(team => !team.user && team.squad.length < 24);
+  const kept = [];
+  const elite = new Map(buyers.map(team => [team, team.squad.filter(p => p.r >= 90).length]));
+  let upper = 0, strong = 0, regular = 0;
+  const candidates = [...G.freeAgents].sort((a, b) => b.r - a.r || a.age - b.age);
+  for (const p of candidates) {
+    if (occupied.has(p.id) || p.age >= 39) continue;
+    occupied.add(p.id);
+    const fitsMarket = p.r < 92 && (p.r >= 90 ? upper < 2 : p.r >= 85 ? strong < 10 : regular < 60);
+    if (fitsMarket) {
+      kept.push(p);
+      if (p.r >= 90) upper++;
+      else if (p.r >= 85) strong++;
+      else regular++;
+      continue;
+    }
+    if (p.r < 85) continue;
+    let destination, best = Infinity;
+    for (const team of buyers) {
+      if (team.squad.length >= 24 || (p.r >= 90 && elite.get(team) >= 2)) continue;
+      const samePosition = team.squad.filter(q => q.pos === p.pos).length;
+      const cost = Math.abs((team.str || 60) + 4 - p.r) + elite.get(team) * 4 + samePosition * .45;
+      if (cost < best) { destination = team; best = cost; }
+    }
+    if (destination) {
+      delete p.freeSince;
+      delete p.agentRequest;
+      destination.squad.push(p);
+      if (p.r >= 90) elite.set(destination, elite.get(destination) + 1);
+    } else if (kept.length < 100) {
+      // Keep a player available for the next round of AI recruitment.
+      kept.push(p);
+    }
+  }
+  G.freeAgents = kept;
+  cfClubIndex(true);
+}
+
+function cfVisibleAgents() {
+  let upper = 0, strong = 0;
+  return G.freeAgents.filter(p => {
+    if (p.r >= 92) return false;
+    if (p.r >= 90) return upper++ < 2;
+    if (p.r >= 85) return strong++ < 10;
+    return true;
+  });
+}
+
+function cfAdvanceAgents() {
+  for (const p of G.freeAgents) cfDevelopPlayer(p, null);
+  G.freeAgents = G.freeAgents.filter(p => G.season - (p.freeSince ?? G.season) < 4 || p.r >= 85);
+  cfRebalanceAgents();
+}
+
+function cfSigningBonus(p, wage, kind) {
+  if (kind === 'renew') return wage;
+  if (kind === 'free') return Math.max(8 * wage, price(p) * 60000);
+  return 3 * wage;
+}
+
+function cfFundingShare(budget) {
+  return 1 / (1 + Math.max(0, budget - 180) / 140);
+}
+
+function cfRoundFinances(team, rounds, weeklyWages, budget) {
+  const level = cfLeagueFactor(team);
+  return {
+    income: cfRoundMoney((.45 + .52 * level) * cfFundingShare(budget)),
+    salary: cfRoundMoney(weeklyWages * 52 / rounds / 1e6),
+    upkeep: cfRoundMoney((3 + 6 * level) / rounds)
+  };
+}
+
+function cfSeasonFunds(place) {
+  const team = me(), level = cfLeagueFactor(team);
+  const position = (G.t.length - place) / Math.max(1, G.t.length - 1);
+  const euro = cupWin(clC()) === team.name ? 16 : cupWin(elC()) === team.name ? 7 : 0;
+  return cfRoundMoney((3 + 18 * position ** 2 * level + euro) * cfFundingShare(G.bud));
+}
+
+function cfLedgerEntry(kind, amount) {
+  return {season:G.season, round:G.round, kind, amount};
+}
+
+function cfRecordClubCash(...entries) {
+  G.club.ledger = [...entries, ...G.club.ledger].slice(0, 24);
+}
+
+function cfCashLabel(kind) {
+  return {income:'доход +', salary:'зарплата −', upkeep:'стадион и база −', prize:'призовые +'}[kind] || 'операция ';
+}
+
+function cfCloseOtherLeagues() {
+  if (G.worldFinishedSeason === G.season) return;
+  finOth();
+  adv();
+  G.worldFinishedSeason = G.season;
+}
+
+function cfSeasonTables() {
+  return [[G.lg, G.t], ...Object.entries(G.oth).map(([league, data]) => [league, data.t])];
+}
+
+function cfTrophyPoints(team, place, clWinner, elWinner) {
+  const level = cfLeagueFactor(team);
+  return (place === 1 ? 11 * Math.min(1, level + .15) : 0) +
+    (team.name === clWinner ? 23 : team.name === elWinner ? 12 : 0);
+}
+
+function cfAwardTitles(team, place, clWinner, elWinner) {
+  return [place === 1 ? 'чемпион лиги' : '', team.name === clWinner ? 'победитель ЛЧ' : '',
+    team.name === elWinner ? 'победитель ЛЕ' : ''].filter(Boolean);
+}
+
+function cfCoachAward() {
+  const clWinner = cupWin(clC()), elWinner = cupWin(elC());
+  let best = null;
+  for (const [league, teams] of cfSeasonTables()) {
+    const expected = [...teams].sort((a, b) => b.str - a.str);
+    tsort(teams).forEach((team, index) => {
+      if (!team.p) return;
+      const place = index + 1;
+      const progress = (expected.indexOf(team) - index) / Math.max(1, teams.length - 1);
+      const titles = cfAwardTitles(team, place, clWinner, elWinner);
+      const score = team.pts / team.p * 10 + Math.max(0, progress) * 18 +
+        cfTrophyPoints(team, place, clWinner, elWinner) + Math.min(1, cfLeagueFactor(team)) * 4;
+      if (!best || score > best.score) best = {
+        club:team.name, league, user:!!team.user, name:team.user ? cfCoachName() : 'Тренер «' + team.name + '»',
+        score, place, aboveExpected:expected.indexOf(team) - index, titles
+      };
+    });
+  }
+  return best;
+}
+
+function cfCoachAwardSummary(award) {
+  return [award.place + '-е место', ...award.titles,
+    award.aboveExpected > 0 ? 'выше прогноза на ' + award.aboveExpected + ' мест' : ''].filter(Boolean).join(' · ');
+}
+
+function cfSaveCoachAward() {
+  if (G.coachAwards?.some(award => award.season === G.season)) return;
+  const award = cfCoachAward();
+  if (!award) return;
+  G.coachAwards = [{...award, season:G.season}, ...(G.coachAwards || [])].slice(0, 30);
+  if (award.user) G.co.bestCoach = (G.co.bestCoach || 0) + 1;
+  nw('🎖️ Тренер сезона: ' + cfEsc(award.name) + ' · ' + award.club, award.league);
+}
+
+function cfAwardsHistory() {
+  const rows = G.coachAwards || [];
+  if (!rows.length) return '';
+  return `<div class="c"><h2>Тренер сезона</h2><p>Твоих наград: <b>${G.co?.bestCoach || 0}</b></p>${rows.slice(0, 8).map(a =>
+    `<p><b>${cfEsc(a.name)}</b><br><span class="mu">Сезон ${a.season} · ${cfEsc(a.club)} · ${cfEsc(cfCoachAwardSummary(a))}</span></p>`).join('')}</div>`;
+}
+
+function cfDreamName(value) {
+  const name = String(value ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ');
+  if (!/^[\p{L}\p{M}\p{N} .-]{2,30}$/u.test(name) || !/[\p{L}\p{N}]/u.test(name)) return '';
+  const key = name.toLowerCase();
+  const clubs = [...Object.values(L).flat(), ...Object.values(LD).flat(2)];
+  return clubs.some(club => club.split(':')[0].normalize('NFKC').toLowerCase() === key) ? '' : name;
+}
+
+let CF_DREAM_NAME = '';
+function cfStartDreamClub(index) {
+  if (validSave(readSlot(ACTIVE_SLOT))) {
+    $('cf-dream-error').textContent = 'Для нового клуба выбери пустой слот карьеры.';
+    return;
+  }
+  const input = $('cf-dream-name'), name = cfDreamName(input?.value);
+  if (!name) {
+    $('cf-dream-error').textContent = 'Придумай уникальное название от 2 до 30 символов. Подойдут буквы, цифры, пробел, точка и дефис.';
+    input?.focus();
+    return;
+  }
+  CF_DREAM_NAME = name;
+  newGame(LG, index, DV, 1, name);
+}
+
+function cfDreamOffers(query = '') {
+  const draft = G.dr;
+  const pos = DS[draft.i];
+  const search = String(query).trim().toLocaleLowerCase('ru-RU');
+  const clubs = [...allT().filter(team => !team.user), draft.reserve];
+  return clubs.flatMap(team => team.squad.filter(p => p.pos === pos &&
+    (!search || `${p.n} ${team.name}`.toLocaleLowerCase('ru-RU').includes(search))))
+    .sort((a, b) => b.r - a.r || a.n.localeCompare(b.n, 'ru')).slice(0, search ? 30 : 12);
+}
+
+function cfPaintDreamDraft(query) {
+  const box = $('cf-dream-offers');
+  if (!box || !G?.dr?.reserve) return;
+  box.innerHTML = cfDreamOffers(query).map(p => drCard(p.id)).join('') || '<p class="mu">По этому запросу игроков нет.</p>';
+}
+
+function cfDraftOffers(draft) {
+  if (!draft.reserve) return `<div class="offers">${draft.o.map(drCard).join('')}</div>`;
+  return `<div class="c"><label for="cf-dream-search">Поиск по имени или клубу</label><input id="cf-dream-search" type="search" maxlength="60" style="display:block;width:100%;margin-top:8px" placeholder="Например, Haaland или ЦСКА" oninput="cfPaintDreamDraft(this.value)"><p class="mu">Выбери игрока на позицию из списка. Состав сохраняется после каждого выбора.</p></div><div class="offers" id="cf-dream-offers">${cfDreamOffers().map(p => drCard(p.id)).join('')}</div>`;
+}
+
+</script>
+<script>
 /* CyberFoot owner tools. All server permissions come from verified Telegram initData. */
 (() => {
   'use strict';
@@ -1102,3 +1402,4 @@ function verifyTelegram(raw, botId, now) {
 
 </script>
 </body></html>
+
