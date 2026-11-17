@@ -358,24 +358,62 @@ function unpackSave(data){
   for(let i=0;i<str.length;i++)bytes[i]=str.charCodeAt(i);
   return new TextDecoder().decode(bytes);
 }
-let readSlot=n=>{try{const s=localStorage.getItem(slotKey(n));return s?JSON.parse(unpackSave(s)):null}catch(e){console.warn('Не удалось прочитать слот '+n,e);return null}};
+// IndexedDB fallback keeps large careers when localStorage reaches its quota.
+const cfStoredSlots=new Map(),cfPendingSlots=new Map();
+let cfSaveDB=null;
+const cfStorageReady=new Promise(resolve=>{
+  try{
+    const request=indexedDB.open('cyberfoot-careers',1);
+    request.onupgradeneeded=()=>request.result.createObjectStore('slots');
+    request.onerror=()=>resolve();
+    request.onblocked=()=>resolve();
+    request.onsuccess=()=>{
+      cfSaveDB=request.result;
+      const tx=cfSaveDB.transaction('slots','readonly'),store=tx.objectStore('slots');
+      for(const n of [1,2]){const r=store.get(n);r.onsuccess=()=>{try{if(r.result&&validSave(JSON.parse(unpackSave(r.result))))cfStoredSlots.set(n,r.result)}catch(e){console.warn('Резервный слот не читается',e)}}}
+      tx.oncomplete=()=>resolve();tx.onerror=()=>resolve();tx.onabort=()=>resolve();
+    };
+  }catch(e){resolve()}
+});
+function cfSlotRaw(n){return cfStoredSlots.get(n)||localStorage.getItem(slotKey(n))}
+let readSlot=n=>{try{const s=cfSlotRaw(n);return s?JSON.parse(unpackSave(s)):null}catch(e){console.warn('Не удалось прочитать слот '+n,e);return null}};
+function cfExportCareer(){
+  if(!G)return;
+  const url=URL.createObjectURL(new Blob([JSON.stringify(G)],{type:'application/json'}));
+  const a=document.createElement('a');a.href=url;a.download='CyberFoot-career-'+ACTIVE_SLOT+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+function cfSaveFailure(e){
+  console.error('Не удалось сохранить карьеру',e);
+  if(saveWarning)return;saveWarning=true;
+  alert('Не удалось сохранить карьеру №'+ACTIVE_SLOT+'. Не закрывай игру. Нажми «Скачать карьеру» для резервной копии. Причина: '+(e?.name||'ошибка хранилища'));
+  if(!document.getElementById('cf-save-rescue')){
+    const b=document.createElement('button');b.id='cf-save-rescue';b.textContent='Скачать карьеру';b.style.cssText='position:fixed;bottom:24px;left:10%;width:80%;z-index:99999';b.onclick=cfExportCareer;document.body.append(b);
+  }
+}
 let saveWarning=false;
 const save=()=>{
   if(window.CFAdmin?.isPromo())return window.CFAdmin.savePromo();
   if(!ACTIVE_SLOT||!G)return false;
-  cfEnsureCareer();
+  let data;
   try{
-    const key=slotKey(ACTIVE_SLOT),data=packSave(JSON.stringify(G));
-    localStorage.setItem(key,data);
-    if(localStorage.getItem(key)!==data)throw Error('Проверка записи не пройдена');
-    const restored=readSlot(ACTIVE_SLOT);
-    if(!validSave(restored))throw Error('Сохранение записано, но не читается или повреждено');
-    saveWarning=false;return true;
-  }catch(e){
-    console.error('Не удалось сохранить карьеру',e);
-    if(!saveWarning){saveWarning=true;alert('Не удалось сохранить карьеру №'+ACTIVE_SLOT+'. Память Telegram может быть заполнена. Не закрывай игру до решения проблемы.');}
-    return false;
-  }
+    cfEnsureCareer();data=packSave(JSON.stringify(G));
+    if(!validSave(JSON.parse(unpackSave(data))))throw Error('Проверка сохранения не пройдена');
+    if(cfStoredSlots.get(ACTIVE_SLOT)===data&&!cfPendingSlots.has(ACTIVE_SLOT))return true;
+    if(!cfStoredSlots.has(ACTIVE_SLOT)&&!cfPendingSlots.has(ACTIVE_SLOT)){
+      try{const key=slotKey(ACTIVE_SLOT);localStorage.setItem(key,data);if(localStorage.getItem(key)!==data)throw Error('Проверка записи не пройдена');saveWarning=false;return true}catch(e){if(!cfSaveDB)throw e}
+    }
+    if(!cfSaveDB)throw Error('Резервное хранилище недоступно');
+    const n=ACTIVE_SLOT;
+    if(cfPendingSlots.get(n)===data)return false;
+    const tx=cfSaveDB.transaction('slots','readwrite');tx.objectStore('slots').put(data,n);cfPendingSlots.set(n,data);
+    tx.oncomplete=()=>{
+      cfStoredSlots.set(n,data);
+      if(cfPendingSlots.get(n)===data){cfPendingSlots.delete(n);saveWarning=false;document.getElementById('cf-save-rescue')?.remove()}
+    };
+    tx.onabort=()=>{if(cfPendingSlots.get(n)===data){cfPendingSlots.delete(n);cfSaveFailure(tx.error)}};
+    tx.onerror=()=>{};
+    return false; // A queued write is not yet a durable save.
+  }catch(e){cfSaveFailure(e);return false}
 };
 const load=()=>ACTIVE_SLOT?readSlot(ACTIVE_SLOT):null;
 function selectSlot(n){
@@ -396,6 +434,11 @@ function slotMenu(){
 function deleteSlot(n){
   if(n!==1&&n!==2)return;
   if(!confirm('Удалить карьеру №'+n+'? Это действие нельзя отменить.'))return;
+  if(cfPendingSlots.has(n))return alert('Сохранение ещё записывается. Повтори через несколько секунд.');
+  if(cfStoredSlots.has(n)){
+    try{const tx=cfSaveDB.transaction('slots','readwrite');tx.objectStore('slots').delete(n);tx.oncomplete=()=>{cfStoredSlots.delete(n);try{localStorage.removeItem(slotKey(n))}catch{}if(ACTIVE_SLOT===n){ACTIVE_SLOT=0;G=null}showSlots()};tx.onabort=()=>alert('Не удалось удалить сохранение')}catch(e){alert('Не удалось удалить сохранение')}
+    return;
+  }
   try{localStorage.removeItem(slotKey(n))}catch(e){alert('Не удалось удалить сохранение');return}
   if(ACTIVE_SLOT===n){ACTIVE_SLOT=0;G=null}
   showSlots();
@@ -403,7 +446,7 @@ function deleteSlot(n){
 function showSlots(){
   migrateSaves();
   const cards=[1,2].map(n=>{
-    const raw=localStorage.getItem(slotKey(n)),g=readSlot(n),ok=validSave(g),team=ok?(g.t.find(t=>t.user)||{}).name:'';
+    const raw=cfSlotRaw(n),g=readSlot(n),ok=validSave(g),team=ok?(g.t.find(t=>t.user)||{}).name:'';
     const summary=ok?'<div class="mu">'+team+' · Сезон '+g.season+'</div>':raw?'<div class="mu">⚠️ Данные слота есть, но не читаются. Не удаляй сохранение!</div>':'<div class="mu">Пустой слот · Новая карьера</div>';
     return '<div class="c" style="margin:12px 0;padding:18px"><div class="eyebrow">Сохранение №'+n+'</div><h2 style="margin:10px 0">'+(ok?team:'Новая карьера')+'</h2>'+summary+
       '<button class="cta" style="width:100%;margin-top:14px" onclick="selectSlot('+n+')">'+(ok?'Продолжить':'Создать карьеру')+'</button>'+
@@ -838,7 +881,7 @@ function vRounds(){const n=G.fx.length,r=C(VR<0?Math.min(G.round,n-1):VR,0,n-1);
 const buyT=(id,pp)=>cfOfferAcquisition(id,pp,'club');
 function cfOldTransfers(){const u=me(),o=G.t.filter(t=>!t.user),c=o[C(TC,0,o.length-1)],O={GK:0,DEF:1,MID:2,FWD:3},row=(p,b)=>`<div class='p' style='cursor:default'><span class='b'>${p.pos}</span><span style='flex:1'>${p.n} ${st(p)}<b class='ib' onclick='card(${p.id})'>ⓘ</b><span class='mu'>${p.cl?' · '+p.cl:''} · ${p.age} л. · ${cfMoneyM(price(p))}</span></span><b>${p.r}</b>${b}</div>`,ord=a=>[...a].sort((x,y)=>O[x.pos]-O[y.pos]||y.r-x.r),src=act()?allL().filter(([t,l])=>!t.user&&(!FL.lg||FL.lg==l)).flatMap(([t,l])=>t.squad.filter(okp).map(p=>({...p,cl:t.name+' ('+l+')'}))).sort(srt).slice(0,40):c.squad;return`<div class='c'><b>Бюджет: ${cfMoneyM(G.bud)}</b><p class='mu'>${winTxt()}</p><p class='mu'>Покупай игроков у клубов лиги. Продажа — предложение реального клуба с подходящим бюджетом. Трансферы мира видны в ленте выше.</p><select onchange='TC=+this.value;render()' style='width:100%;padding:10px;font:inherit;border-radius:10px;background:var(--cd);color:var(--fg);border:1px solid var(--bd)'>${o.map((t,i)=>`<option value='${i}' ${t==c?'selected':''}>${t.name} (сила ${t.str})</option>`).join('')}</select>${flt2(1)}</div><div class='c' style='padding:0'>${(act()?src:ord(src)).map(p=>row(p,`<button ${G.bud>=price(p)&&u.squad.length<24&&win()?'':'disabled'} onclick='bid(${p.id})'>Купить</button>`)).join('')}</div><h2>Мои игроки</h2><div class='c' style='padding:0'>${ord(u.squad).map(p=>row(p,`<button class='s' ${u.squad.length>15?'':'disabled'} onclick='sell(${p.id})'>Продать</button>`)).join('')}</div>`}
 function render(){if(G){cfEnsureCareer();cfEnsureBoardGoal();if(!G.dr)cfExtraEnsure();}if(!ACTIVE_SLOT)return showSlots();if(!G)return start();if(G.dr){$('app').innerHTML='<div style="padding:12px"><button class="s" onclick="slotMenu()">← Мои карьеры</button></div>'+vDraft();return}ensureGK();$("app").innerHTML=`<div style="padding:10px 12px"><button class="s" onclick="slotMenu()">← Мои карьеры · слот ${ACTIVE_SLOT}</button></div>${topBar()}<div class="tabs">${TBL.map((n,i)=>`<button class="${i==TAB?"":"s"}" onclick="TAB=${i};render()">${n}</button>`).join("")}</div>`+[vMatch,vSquad,vYouth,vTr2,vTable,vCar2][TAB]();document.querySelectorAll('.b').forEach(e=>e.dataset.p=e.textContent);$('app').classList.toggle('an',TAB!==window.lt);window.lt=TAB}
-showSlots();
+cfStorageReady.then(()=>showSlots());
 
 /* One fixture applies the same workload to both teams. No user-only stamina penalty. */
 function cfPlayedIds(team){return team?.squad?lu(team).map(p=>p.id):[]}
